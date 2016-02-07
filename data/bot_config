@@ -1,0 +1,20 @@
+bot_command_prefix=.
+bot_version=0.1.0
+
+channel_main=season4
+channel_admin=adminchat
+channel_schedule=schedule
+
+admin_roles=CoNDOR Staff
+
+race_countdown_time_seconds=10
+race_begin_counting_down_at=5
+race_record_after_seconds=120
+race_cleanup_after_room_is_silent_for_seconds=150
+race_cleanup_after_no_entrants_for_seconds=120
+race_give_cleanup_warning_after_no_entrants_for_seconds=60
+race_poke_delay=10
+
+db_filename=data/condors4.db
+gsheet_credentials_filename=data/gsheet_credentials.json
+gsheet_doc_name=CoNDOR Season 4
