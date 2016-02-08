@@ -9,15 +9,11 @@ from oauth2client.client import SignedJwtAssertionCredentials
 import config
 
 from condordb import CondorDB
+from condormatch import CondorMatch
 
 def grouper(iterable, n, fillvalue=None):
     args = [iter(iterable)] * n
     return zip_longest(*args, fillvalue=fillvalue)
-
-class CondorMatch(object):
-    def __init__(self, racer_1_id, racer_2_id):
-        self.racer_1_id = racer_1_id
-        self.racer_2_id = racer_2_id
 
 class CondorSheet(object):
     def __init__(self, condor_db):
@@ -28,7 +24,8 @@ class CondorSheet(object):
         gc = gspread.authorize(credentials)
         self._gsheet = gc.open(config.GSHEET_DOC_NAME)
 
-    def get_matches(self, worksheet_name):
+    def get_matches(self, week):       
+        worksheet_name = "Week {}".format(week)
         wks = self._gsheet.worksheet(worksheet_name)
         if wks:
             matches = []
@@ -44,7 +41,9 @@ class CondorSheet(object):
                 r1id = self._db.get_discord_id(cell[0].value)
                 r2id = self._db.get_discord_id(cell[1].value)
                 if r1id and r2id:
-                    matches.append(CondorMatch(r1id, r2id))
+                    matches.append(CondorMatch(r1id, r2id, week))
 
             return matches
+        else:
+            print('Couldn\'t find worksheet <{}>.'.worksheet_name)
     

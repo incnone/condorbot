@@ -97,6 +97,12 @@ class Necrobot(object):
                 to_return.append(member)
         return to_return
 
+    def find_member_with_id(self, member_id):
+        for member in self.server.members:
+            if int(member.id) == member_id:
+                return member
+        return None
+
     ## Log out of discord
     @asyncio.coroutine
     def logout(self):
