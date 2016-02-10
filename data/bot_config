@@ -1,6 +1,8 @@
 bot_command_prefix=.
 bot_version=0.1.0
 
+year=2016
+
 channel_main=season4
 channel_admin=adminchat
 channel_schedule=schedule
@@ -17,4 +19,5 @@ race_poke_delay=10
 
 db_filename=data/condors4.db
 gsheet_credentials_filename=data/gsheet_credentials.json
-gsheet_doc_name=CoNDOR Season 4
+gsheet_doc_name=CoNDOR Season 4 Test
+gsheet_timezone=US/Eastern

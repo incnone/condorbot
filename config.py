@@ -2,6 +2,8 @@ def init(config_filename):
     global BOT_COMMAND_PREFIX
     global BOT_VERSION
 
+    global SEASON_YEAR
+
     #admin
     global ADMIN_ROLE_NAMES                     #list of names of roles to give admin access
 
@@ -25,10 +27,12 @@ def init(config_filename):
     #gsheets
     global GSHEET_CREDENTIALS_FILENAME
     global GSHEET_DOC_NAME
+    global GSHEET_TIMEZONE
     
     defaults = {
         'bot_command_prefix':'.',
         'bot_version':'0.1.0',
+        'year':'2016',
         'channel_main':'season4',
         'channel_admin':'adminchat',
         'channel_schedule':'schedule',
@@ -43,6 +47,7 @@ def init(config_filename):
         'db_filename':'data/necrobot.db',
         'gsheet_credentials_filename':'data/gsheet_credentials.json',
         'gsheet_doc_name':'CoNDOR Season 4',
+        'gsheet_timezone':'US/Eastern',
         }
 
     admin_roles = []
@@ -63,6 +68,9 @@ def init(config_filename):
 
     BOT_COMMAND_PREFIX = defaults['bot_command_prefix']
     BOT_VERSION = defaults['bot_version']
+
+    THIS_YEAR = int(defaults['year'])
+    
     MAIN_CHANNEL_NAME = defaults['channel_main']
     ADMIN_CHANNEL_NAME = defaults['channel_admin']
     SCHEDULE_CHANNEL_NAME = defaults['channel_schedule']
@@ -81,3 +89,4 @@ def init(config_filename):
     DB_FILENAME = defaults['db_filename']
     GSHEET_CREDENTIALS_FILENAME = defaults['gsheet_credentials_filename']
     GSHEET_DOC_NAME = defaults['gsheet_doc_name']
+    GSHEET_TIMEZONE = defaults['gsheet_timezone']
