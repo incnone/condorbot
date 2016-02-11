@@ -69,7 +69,7 @@ def init(config_filename):
     BOT_COMMAND_PREFIX = defaults['bot_command_prefix']
     BOT_VERSION = defaults['bot_version']
 
-    THIS_YEAR = int(defaults['year'])
+    SEASON_YEAR = int(defaults['year'])
     
     MAIN_CHANNEL_NAME = defaults['channel_main']
     ADMIN_CHANNEL_NAME = defaults['channel_admin']

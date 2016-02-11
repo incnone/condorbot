@@ -7,7 +7,7 @@ channel_main=season4
 channel_admin=adminchat
 channel_schedule=schedule
 
-admin_roles=CoNDOR Staff
+admin_roles=CoNDOR Staff,Condorbot
 
 race_countdown_time_seconds=10
 race_begin_counting_down_at=5

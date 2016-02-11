@@ -20,9 +20,12 @@ def grouper(iterable, n, fillvalue=None):
 class CondorSheet(object):
     def _get_match_time_str(utc_datetime):
         gsheet_tz = pytz.timezone(config.GSHEET_TIMEZONE)
-        gsheet_dt = gsheet_tz.normalize(utc_datetime.astimezone(gsheet_tz))
+        gsheet_dt = gsheet_tz.normalize(utc_datetime.replace(tzinfo=pytz.utc).astimezone(gsheet_tz))
         weekday = calendar.day_name[gsheet_dt.weekday()]
-        datestr = gsheet_dt.strftime("%b %d @ %I:%M%p %Z")
+        day = gsheet_dt.strftime("%d").lstrip('0')
+        hour = gsheet_dt.strftime("%I").lstrip('0')
+        pm_str = gsheet_dt.strftime("%p").lower()
+        datestr = gsheet_dt.strftime("%b {0} @ {1}:%M{2} %Z".format(day, hour, pm_str))
         return weekday + ', ' + datestr
 
     def __init__(self, condor_db):
@@ -57,24 +60,23 @@ class CondorSheet(object):
             racers = wks.range('{0}:{1}'.format(ul_addr, lr_addr))
 
             for cell in grouper(racers, 2, None):
-                print('{0} vs {1}'.format(cell[0].value, cell[1].value))
-                r1id = self._db.get_discord_id(cell[0].value)
-                r2id = self._db.get_discord_id(cell[1].value)
-                if r1id and r2id:
-                    matches.append(CondorMatch(r1id, r2id, week))
+                racer_1 = self._db.get_from_twitch_name(cell[0].value, register=True)
+                racer_2 = self._db.get_from_twitch_name(cell[1].value, register=True)
+                if racer_1 and racer_2:
+                    matches.append(CondorMatch(racer_1, racer_2, week))
 
             return matches
         else:
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)
 
-    def schedule_match(self, match, utc_dt):
+    def schedule_match(self, match):
         wks = self._get_wks(match.week)
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
-                schedule_column = wks.find('Scheduled:')
+                scheduled_column = wks.find('Scheduled:')
                 if scheduled_column:
-                    wks.update_cell(match_row, scheduled_column.col, _get_match_time_str(utc_dt))
+                    wks.update_cell(match_row, scheduled_column.col, CondorSheet._get_match_time_str(match.time))
                 else:
                     print('Couldn\'t find the "Scheduled:" column on the GSheet.')
             else:

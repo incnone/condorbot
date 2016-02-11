@@ -1,10 +1,14 @@
 class CondorRacer(object):
-    def __init__(self, discord_id, twitch_name):
-        self.discord_id = discord_id
+    def __init__(self, twitch_name):
+        self.discord_id = None
         self.discord_name = None
         self.twitch_name = twitch_name
         self.steam_id = None
         self.timezone = None
+
+    @property
+    def infostr(self):
+        return '{0} (twitch.tv/{1}), timezone {2}'.format(self.discord_name, self.twitch_name, self.timezone)
 
     @property
     def gsheet_name(self):

@@ -8,15 +8,16 @@ DB_OUT_NAME = 'data/condors4.db'
 def make_new_database():
     db_conn = sqlite3.connect(DB_OUT_NAME)
     db_conn.execute("""CREATE TABLE user_data
-                    (discord_id bigint,
+                    (racer_id integer,
+                    discord_id bigint UNIQUE ON CONFLICT REPLACE,
                     discord_name text,
-                    twitch_name text,
+                    twitch_name text UNIQUE ON CONFLICT ABORT,
                     steam_id int,
                     timezone text,
-                    PRIMARY KEY (discord_id) ON CONFLICT REPLACE)""")
+                    PRIMARY KEY (racer_id))""")
     db_conn.execute("""CREATE TABLE match_data
-                    (racer_1_id int REFERENCES user_data (discord_id),
-                    racer_2_id int REFERENCES user_data (discord_id),
+                    (racer_1_id int REFERENCES user_data (racer_id),
+                    racer_2_id int REFERENCES user_data (racer_id),
                     week_number int,
                     timestamp bigint,
                     played int DEFAULT 0,

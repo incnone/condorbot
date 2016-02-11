@@ -78,7 +78,7 @@ class MakeWeek(command.CommandType):
                 matches = self._cm.condorsheet.get_matches(week)
                 if matches:
                     for match in matches:
-                        self._cm.make_match_channel(match)
+                        yield from self._cm.make_match_channel(match)
                     
             except ValueError:
                 print('Error in makeweek: couldn\'t parse arg <{}> as a week number.'.format(command.args[0]))
@@ -86,12 +86,12 @@ class MakeWeek(command.CommandType):
 class Schedule(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'schedule')
-        self.help_text = 'Schedule a match. Usage is `.schedule <localtime>`, where `<localtime>` is a date and time in your registered timezone. ' \
+        self.help_text = 'Schedule a match. Example: `.schedule February 18 17:30` (your local time; choose a local time with `.timezone`). \n \n' \
+                        'General usage is `.schedule <localtime>`, where `<localtime>` is a date and time in your registered timezone. ' \
                         '(Use `.timezone` to register a timezone with your account.) `<localtime>` takes the form `<month> <date> <time>`, where `<month>` ' \
                         'is the English month name (February, March, April), `<date>` is the date number, and `<time>` is a time `[h]h:mm`. Times can be given ' \
-                        'an am/pm rider or this can be left off, e.g., `7:30a` and `7:30` are interpreted as the same time, as are `15:45` and `3:45p`. Thus a ' \
-                        'call to this command might look like: `.schedule February 18 17:30`, which schedules the match for 5:30 pm in the command caller\'s ' \
-                        'local time. (The bot will output the time this corresponds to for the second racer.)'
+                        'an am/pm rider or this can be left off, e.g., `7:30a` and `7:30` are interpreted as the same time, as are `15:45` and `3:45p`.'
+        self._cm = condor_module
 
     def recognized_channel(self, channel):
         return self._cm.condordb.is_registered_channel(channel.id)
@@ -102,14 +102,14 @@ class Schedule(command.CommandType):
             print('Error in schedule: wrong command arg length.')
         else:
             try:
-                month_name = args[0].capitalize()
-                if not month_name in calendar.month_names:
+                month_name = command.args[0].capitalize()
+                if not month_name in calendar.month_name:
                     print('Error parsing month name.')
                     return
-                month = calendar.month_names.index(month_name)
+                month = list(calendar.month_name).index(month_name)
                 
-                day = int(args[1])
-                time_args = args[2].split(':')
+                day = int(command.args[1])
+                time_args = command.args[2].split(':')
                 if len(time_args) != 2:
                     print('Error parsing time in schedule command.')
                     return
@@ -128,7 +128,7 @@ class Schedule(command.CommandType):
                     timezone_name = 'UTC'
                 racer_tz = pytz.timezone(timezone_name)
                 
-                racer_dt = racer_tz.localize(datetime.datetime(config.THIS_YEAR, month, day, time_hr, time_min, 0))
+                racer_dt = racer_tz.localize(datetime.datetime(config.SEASON_YEAR, month, day, time_hr, time_min, 0))
                 utc_dt = pytz.utc.normalize(racer_dt.astimezone(racer_tz))
 
                 fmt = '%Y-%m-%d %H:%M:%S %Z'
@@ -137,6 +137,9 @@ class Schedule(command.CommandType):
                 # TODO output both racer's times for confirmation
 
                 self._cm.condordb.schedule_match(command.channel.id, utc_dt)
+                match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+                if match:
+                    self._cm.condorsheet.schedule_match(match)
 
             except ValueError:
                 print('Error parsing schedule args: couldn\'t interpret something as an int.')            
@@ -161,11 +164,19 @@ class Stream(command.CommandType):
                 yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: your stream name cannot contain the character /. (Maybe you accidentally ' \
                                                                  'included the "twitch.tv/" part of your stream name?)'.format(command.author.mention))
             else:
-                racer = CondorRacer(command.author.id, twitch_name)
+                racer = CondorRacer(twitch_name)
+                racer.discord_id = command.author.id
                 racer.discord_name = command.author.name
                 self._cm.condordb.register_racer(racer)
                 yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Registered your stream as <twitch.tv/{1}>'.format(command.author.mention, twitch_name))
-                #TODO check room permissions (if a raceroom has been created, allow this user to see it)
+
+                #look for race channels with this racer, and unhide them if we find any
+                channel_ids = self._cm.condordb.find_channel_ids_with(racer)
+                for channel in self._cm.necrobot.server.channels:
+                    if int(channel.id) in channel_ids:
+                        read_permit = discord.Permissions.none()
+                        read_permit.read_messages = True
+                        yield from self._cm.necrobot.client.edit_channel_permissions(channel, command.author, allow=read_permit)
 
 class Timezone(command.CommandType):
     def __init__(self, condor_module):
@@ -225,6 +236,71 @@ class Uncawmentate(command.CommandType):
             self._cm.condordb.remove_cawmentary(match)
             self._cm.condorsheet.remove_cawmentary(match)
 
+class UserInfo(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'userinfo')
+        self.help_text = 'Get stream name and timezone info for the given user (or yourself, if no user provided). Usage is `.userinfo <username>`.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel.is_private or channel == self._cm.necrobot.main_channel
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        #find the user's discord id
+        racer = None
+        if len(command.args) == 0:
+            racer = self._cm.condordb.get_from_discord_id(command.author.id)
+            if not racer:
+                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: You haven\'t registered; use `.stream <twitchname` to register.'.format(command.author.mention))                
+        elif len(command.args) == 1:
+            racer = self._cm.condordb.get_from_discord_name(command.args[0])
+            if not racer:
+                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: User {1} isn\'t registered.'.format(command.author.mention, command.args[0]))                                
+        else:
+            yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: Too many arguments for `.userinfo`.'.format(command.author.mention))
+            return
+
+        if racer:
+            yield from self._cm.necrobot.client.send_message(command.channel, 'User info: {0}.'.format(racer.infostr))
+
+class CloseAllRaceChannels(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'closeallracechannels')
+        self.help_text = 'Closes _all_ private race channels.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.admin_channel
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        channel_ids = self._cm.condordb.get_all_race_channel_ids()
+        channels_to_del = []
+        for channel in self._cm.necrobot.server.channels:
+            if int(channel.id) in channel_ids:
+                channels_to_del.append(channel)
+
+        for channel in channels_to_del:
+            self._cm.condordb.delete_channel(channel.id)
+            yield from self._cm.necrobot.client.delete_channel(channel)
+
+class PurgeChannel(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'purgechannel')
+        self.help_text = 'Delete all commands in this channel.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.main_channel
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if command.author == self._cm.necrobot.server.owner:
+            logs = yield from self._cm.client.logs_from(channel, limit=1000)
+            for message in logs:
+                yield from self._cm.client.delete_message(message)
+
 class CondorModule(command.Module):
     def __init__(self, necrobot, db_connection):
         command.Module.__init__(self, necrobot)
@@ -232,8 +308,14 @@ class CondorModule(command.Module):
         self.condorsheet = CondorSheet(self.condordb)
 
         self.command_types = [command.DefaultHelp(self),
+                              #MakeWeek(self),
+                              PurgeChannel(self),
+                              #Schedule(self),
                               Stream(self),
-                              Timezone(self)]
+                              Timezone(self),
+                              UserInfo(self),
+                              #CloseAllRaceChannels(self),
+                              ]
 
     @property
     def infostr(self):
@@ -248,19 +330,20 @@ class CondorModule(command.Module):
         return self.necrobot.find_channel(config.ADMIN_CHANNEL_NAME)
 
     def get_match_channel_name(self, match):
-        racer_1_name = self.condordb.get_name(match.racer_1_id)
-        racer_2_name = self.condordb.get_name(match.racer_2_id)
-        return '{0}-{1}'.format(racer_1_name, racer_2_name)
+##        racer_1_name = match.racer_1.discord_name if match.racer_1.discord_name else match.racer_1.twitch_name
+##        racer_2_name = match.racer_2.discord_name if match.racer_2.discord_name else match.racer_2.twitch_name        
+##        return '{0}-{1}'.format(racer_1_name, racer_2_name)
+        return '{0}-{1}'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
 
     @asyncio.coroutine
     def make_match_channel(self, match):
-        already_made_id = self.condordb.find_match_channel_id(condor_match)
+        already_made_id = self.condordb.find_match_channel_id(match)
         if already_made_id:
             for ch in self.necrobot.server.channels:
                 if int(ch.id) == int(already_made_id):
                     return ch
         
-        open_match_info = self.condordb.get_open_match_channel_info(week)
+        open_match_info = self.condordb.get_open_match_channel_info(match.week)
         channel = None
 
         if open_match_info:
@@ -275,26 +358,38 @@ class CondorModule(command.Module):
         if not open_match_info:
             channel = yield from self.client.create_channel(self.necrobot.server, self.get_match_channel_name(match))
             channel_id = channel.id
+
+            read_permit = discord.Permissions.none()
+            read_permit.read_messages = True
+            yield from self.client.edit_channel_permissions(channel, self.necrobot.server.default_role, deny=read_permit)
+            
         # otherwise, change the name of the channel we got, and remove permissions from it
         else:
-            match = open_match_info[1]
+            old_match = open_match_info[1]
             yield from self.client.edit_channel(channel, name=self.get_match_channel_name(match))
             read_permit = discord.Permissions.none()
             read_permit.read_messages = True
-            racer_1 = self.necrobot.find_member_with_id(match.racer_1_id)
-            racer_2 = self.necrobot.find_member_with_id(match.racer_2_id)
-            yield from self.client.edit_channel_permissions(channel, racer_1, deny=read_permit)
-            yield from self.client.edit_channel_permissions(channel, racer_2, deny=read_permit)
+
+            if old_match.racer_1.discord_id:
+                racer_1 = self.necrobot.find_member_with_id(old_match.racer_1.discord_id)
+                yield from self.client.delete_channel_permissions(channel, racer_1)
+
+            if old_match.racer_2.discord_id:
+                racer_2 = self.necrobot.find_member_with_id(old_match.racer_2.discord_id)
+                yield from self.client.delete_channel_permissions(channel, racer_2)
+
+            #TODO purge the channel and save the text
 
         self.condordb.register_channel(match, channel.id)
 
-        read_permit = discord.Permissions.none()
-        read_permit.read_messages = True
-        yield from self.client.edit_channel_permissions(channel, self.necrobot.server.default_role, deny=read_permit)
-        racer_1 = self.necrobot.find_member_with_id(match.racer_1_id)
-        racer_2 = self.necrobot.find_member_with_id(match.racer_2_id)
-        yield from self.client.edit_channel_permissions(channel, racer_1, allow=read_permit)
-        yield from self.client.edit_channel_permissions(channel, racer_2, allow=read_permit)
-        for role in self.necrobot.admin_roles():
+        if match.racer_1.discord_id:
+            racer_1 = self.necrobot.find_member_with_id(match.racer_1.discord_id)
+            yield from self.client.edit_channel_permissions(channel, racer_1, allow=read_permit)
+
+        if match.racer_2.discord_id:
+            racer_2 = self.necrobot.find_member_with_id(match.racer_2.discord_id)
+            yield from self.client.edit_channel_permissions(channel, racer_2, allow=read_permit)
+
+        for role in self.necrobot.admin_roles:
             yield from self.client.edit_channel_permissions(channel, role, allow=read_permit)
         
