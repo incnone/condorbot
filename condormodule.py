@@ -297,7 +297,7 @@ class PurgeChannel(command.CommandType):
     @asyncio.coroutine
     def _do_execute(self, command):
         if command.author == self._cm.necrobot.server.owner:
-            logs = yield from self._cm.client.logs_from(channel, limit=1000)
+            logs = yield from self._cm.client.logs_from(command.channel, limit=1000)
             for message in logs:
                 yield from self._cm.client.delete_message(message)
 
