@@ -105,7 +105,7 @@ class CondorDB(object):
                 self._db_conn.commit()
                 return
                 
-        self._db_conn.execute("INSERT INTO user_data (discord_id, discord_name, twitch_name, steam_id, timezone) VALUES (?,?,?,?,?)", full_params)
+        self._db_conn.execute("INSERT INTO user_data (discord_id, discord_name, timezone, steam_id, twitch_name) VALUES (?,?,?,?,?)", full_params)
         self._db_conn.commit()
 
     def register_timezone(self, discord_id, timezone):

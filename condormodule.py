@@ -289,6 +289,7 @@ class PurgeChannel(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'purgechannel')
         self.help_text = 'Delete all commands in this channel.'
+        self.suppress_help = True
         self._cm = condor_module
 
     def recognized_channel(self, channel):
@@ -309,7 +310,7 @@ class CondorModule(command.Module):
 
         self.command_types = [command.DefaultHelp(self),
                               #MakeWeek(self),
-                              PurgeChannel(self),
+                              #PurgeChannel(self),
                               #Schedule(self),
                               Stream(self),
                               Timezone(self),
