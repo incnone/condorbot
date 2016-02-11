@@ -292,7 +292,7 @@ class PurgeChannel(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel == self._cm.main_channel
+        return channel == self._cm.necrobot.main_channel
 
     @asyncio.coroutine
     def _do_execute(self, command):
