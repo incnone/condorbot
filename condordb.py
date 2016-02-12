@@ -84,7 +84,9 @@ class CondorDB(object):
         return False
 
     def register_channel(self, match, channel_id):
-        params = (channel_id, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        self._db_conn.execute("INSERT INTO match_data (racer_1_id, racer_2_id, week_number) VALUES (?,?,?)", params)
+        params = (channel_id,) + params
         self._db_conn.execute("INSERT INTO channel_data (channel_id, racer_1_id, racer_2_id, week_number) VALUES (?,?,?,?)", params)
         self._db_conn.commit()
 
@@ -147,17 +149,19 @@ class CondorDB(object):
     def get_match(self, racer_1, racer_2, week_number=None):
         if week_number == None:
             params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2),)
-            for row in self._db_conn.execute("SELECT week_number,timestamp FROM match_data WHERE racer_1_id=? AND racer_2_id=? ORDER BY week_number DESC", params):
+            for row in self._db_conn.execute("SELECT week_number,timestamp,flags FROM match_data WHERE racer_1_id=? AND racer_2_id=? ORDER BY week_number DESC", params):
                 match = CondorMatch(racer_1, racer_2, row[0])
                 if row[1]:
                     match.time = datetime.datetime.utcfromtimestamp(int(row[1]))
+                match.flags = row[2]
                 return match
         else:
             params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number)
-            for row in self._db_conn.execute("SELECT timestamp FROM match_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
+            for row in self._db_conn.execute("SELECT timestamp,flags FROM match_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
                 match = CondorMatch(racer_1, racer_2, week_number)
                 if row[0]:
                     match.time = datetime.datetime.utcfromtimestamp(int(row[0]))
+                match.flags = row[1]
                 return match            
         return None
 
@@ -169,21 +173,10 @@ class CondorDB(object):
             return self.get_match(racer_1, racer_2, int(row[2]))
         return None
             
-    def schedule_match(self, channel_id, utc_datetime):
-        params = (channel_id,)
-        for row in self._db_conn.execute("SELECT racer_1_id,racer_2_id,week_number FROM channel_data WHERE channel_id=?", params):
-            r1id = row[0]
-            r2id = row[1]
-            week = row[2]
-            params = (row[0], row[1], row[2],)
-            for row in self._db_conn.execute("SELECT played FROM match_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
-                if row[0]:
-                    print('Error: trying to schedule a match that has already been played.')
-                    return
-
-            params = (r1id, r2id, week, utc_datetime.timestamp(),)
-            self._db_conn.execute("INSERT INTO match_data (racer_1_id,racer_2_id,week_number,timestamp) VALUES (?,?,?,?)", params)       
-            self._db_conn.commit()
+    def update_match(self, match):
+        params = (match.time.timestamp(), match.flags, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        self._db_conn.execute("UPDATE match_data SET timestamp=?,flags=? WHERE racer_1_id=?,racer_2_id=?,week_number=?", params)       
+        self._db_conn.commit()               
 
     def get_cawmentator(self, match):
         params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)

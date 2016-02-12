@@ -8,6 +8,7 @@ import pytz
 from itertools import zip_longest
 from oauth2client.client import SignedJwtAssertionCredentials
 
+import condortimestr
 import config
 
 from condordb import CondorDB
@@ -21,20 +22,15 @@ class CondorSheet(object):
     def _get_match_time_str(utc_datetime):
         gsheet_tz = pytz.timezone(config.GSHEET_TIMEZONE)
         gsheet_dt = gsheet_tz.normalize(utc_datetime.replace(tzinfo=pytz.utc).astimezone(gsheet_tz))
-        weekday = calendar.day_name[gsheet_dt.weekday()]
-        day = gsheet_dt.strftime("%d").lstrip('0')
-        hour = gsheet_dt.strftime("%I").lstrip('0')
-        pm_str = gsheet_dt.strftime("%p").lower()
-        datestr = gsheet_dt.strftime("%b {0} @ {1}:%M{2} %Z".format(day, hour, pm_str))
-        return weekday + ', ' + datestr
+        return condortimestr.get_time_str(gsheet_dt)
 
     def __init__(self, condor_db):
         self._db = condor_db
-##        json_key = json.load(open(config.GSHEET_CREDENTIALS_FILENAME))
-##        scope = ['https://spreadsheets.google.com/feeds']
-##        credentials = SignedJwtAssertionCredentials(json_key['client_email'], json_key['private_key'].encode(), scope)
-##        gc = gspread.authorize(credentials)
-##        self._gsheet = gc.open(config.GSHEET_DOC_NAME)
+        json_key = json.load(open(config.GSHEET_CREDENTIALS_FILENAME))
+        scope = ['https://spreadsheets.google.com/feeds']
+        credentials = SignedJwtAssertionCredentials(json_key['client_email'], json_key['private_key'].encode(), scope)
+        gc = gspread.authorize(credentials)
+        self._gsheet = gc.open(config.GSHEET_DOC_NAME)
 
     def _get_wks(self, week):
         worksheet_name = "Week {}".format(week)

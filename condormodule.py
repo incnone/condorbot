@@ -7,6 +7,7 @@ from pytz import timezone
 import pytz
 
 import command
+import condortimestr
 import config
 
 from condordb import CondorDB
@@ -54,6 +55,41 @@ class Cawmentate(command.CommandType):
             self._cm.condordb.add_cawmentary(match, cawmentator.discord_id)
             self._cm.condorsheet.add_cawmentary(match, cawmentator.twitch_name)
 
+class Confirm(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'confirm')
+        self.help_text = 'Confirm that you agree to the suggested time for this match.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+        if not match:
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Error: This match wasn\'t found in the database. Please contact CoNDOR Staff.')
+            return        
+
+        if not match.scheduled:
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Error: A scheduled time for this match has not been suggested. Use `.suggest` to suggest a time.')
+            return               
+
+        racer = self._cm.condordb.get_from_discord_id(command.author.id)
+        if not racer:
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Error: {0} is not registered. Please register with `.stream` in the main channel. ' \
+                'If the problem persists, contact CoNDOR Staff.'.format(command.author.mention))
+            return  
+
+        match.confirm(racer)
+        self._cm.condordb.update_match(match)
+
+        if match.confirmed:
+            self._cm.condorsheet.schedule_match(match)
+    
 class MakeWeek(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'makeweek')
@@ -83,10 +119,10 @@ class MakeWeek(command.CommandType):
             except ValueError:
                 print('Error in makeweek: couldn\'t parse arg <{}> as a week number.'.format(command.args[0]))
 
-class Schedule(command.CommandType):
+class Suggest(command.CommandType):
     def __init__(self, condor_module):
-        command.CommandType.__init__(self, 'schedule')
-        self.help_text = 'Schedule a match. Example: `.schedule February 18 17:30` (your local time; choose a local time with `.timezone`). \n \n' \
+        command.CommandType.__init__(self, 'suggest')
+        self.help_text = 'Propose a time to schedule a match. Example: `.suggest February 18 17:30` (your local time; choose a local time with `.timezone`). \n \n' \
                         'General usage is `.schedule <localtime>`, where `<localtime>` is a date and time in your registered timezone. ' \
                         '(Use `.timezone` to register a timezone with your account.) `<localtime>` takes the form `<month> <date> <time>`, where `<month>` ' \
                         'is the English month name (February, March, April), `<date>` is the date number, and `<time>` is a time `[h]h:mm`. Times can be given ' \
@@ -99,50 +135,95 @@ class Schedule(command.CommandType):
     @asyncio.coroutine
     def _do_execute(self, command):
         if len(command.args) != 3:
-            print('Error in schedule: wrong command arg length.')
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Error: Couldn\'t parse your arguments as a date and time. Model is, e.g., `.suggest March 9 5:30p`.')
+            return
         else:
-            try:
-                month_name = command.args[0].capitalize()
-                if not month_name in calendar.month_name:
-                    print('Error parsing month name.')
-                    return
-                month = list(calendar.month_name).index(month_name)
+            match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+            if not match:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: This match wasn\'t found in the database. Please contact CoNDOR Staff.')
+                return
+            
+            racer = self._cm.condordb.get_from_discord_id(command.author.id)
+            if not racer:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: {0} is not registered. Please register with `.stream` in the main channel. ' \
+                    'If the problem persists, contact CoNDOR Staff.'.format(command.author.mention))
+                return                 
+            
+            cmd_caller_racer_number = 0
+            if command.author.id == match.racer_1.discord_id:
+                cmd_caller_racer_number = 1
+            elif command.author.id == match.racer_2.discord_id:
+                cmd_caller_racer_number = 2
+            else:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: {0} does not appear to be one of the racers in this match. ' \
+                    'If this is in error, contact CoNDOR Staff.'.format(command.author.mention))
+                return
                 
-                day = int(command.args[1])
-                time_args = command.args[2].split(':')
-                if len(time_args) != 2:
-                    print('Error parsing time in schedule command.')
-                    return
+            month_name = command.args[0].capitalize()
+            if not month_name in calendar.month_name:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t parse {0} as the name of a month.'.format(command.args[0]))
+                return
+            month = list(calendar.month_name).index(month_name)
 
-                add_for_pm = time_args[1].endswith('p') or time_args[1].endswith('pm')
+            day = -1
+            try:            
+                day = int(command.args[1])
+            except ValueError:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t parse {0} as a day of the month.'.format(command.args[1]))
+                return                
+                
+            time_args = command.args[2].split(':')
+            if len(time_args) != 2:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t parse {0} as a time.'.format(command.args[2]))
+                return
+
+            add_for_pm = time_args[1].endswith('p') or time_args[1].endswith('pm')
+            try:
                 time_min = int(time_args[1].rstrip('apm'))
                 time_hr = int(time_args[0]) + (int(12) if add_for_pm else 0)
-
-                racer = self._cm.condordb.get_from_discord_id(command.author.id)
-                if not racer:
-                    print ('Error: tried to schedule but not yet registered.')
-                    return
-
-                timezone_name = racer.timezone
-                if not timezone_name in pytz.all_timezones:
-                    timezone_name = 'UTC'
-                racer_tz = pytz.timezone(timezone_name)
-                
-                racer_dt = racer_tz.localize(datetime.datetime(config.SEASON_YEAR, month, day, time_hr, time_min, 0))
-                utc_dt = pytz.utc.normalize(racer_dt.astimezone(racer_tz))
-
-                fmt = '%Y-%m-%d %H:%M:%S %Z'
-                print('Racer time: {}'.format(racer_dt.strftime(fmt)))
-                print('UTC time: {}'.format(utc_dt.strftime(fmt)))
-                # TODO output both racer's times for confirmation
-
-                self._cm.condordb.schedule_match(command.channel.id, utc_dt)
-                match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
-                if match:
-                    self._cm.condorsheet.schedule_match(match)
-
             except ValueError:
-                print('Error parsing schedule args: couldn\'t interpret something as an int.')            
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t parse {0} as a time.'.format(command.args[2]))
+                return                
+
+            timezone_name = racer.timezone
+            if not timezone_name in pytz.all_timezones:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: {0}: I have your timezone stored as "{1}", but I can\'t parse this as a timezone. ' \
+                    'Please attempt to register a valid timezone with `.timezone`. If this problem persists, contact ' \
+                    'CoNDOR Staff.'.format(command.author.mention, timezone_name))
+                return
+
+            racer_tz = pytz.timezone(timezone_name)
+            
+            racer_dt = racer_tz.localize(datetime.datetime(config.SEASON_YEAR, month, day, time_hr, time_min, 0))
+            utc_dt = pytz.utc.normalize(racer_dt.astimezone(racer_tz))
+
+            match.schedule(utc_dt, racer)
+
+            #update the db
+            self._cm.condordb.update_match(match)
+
+            #output what we did
+            racers = [match.racer_1, match.racer_2]
+            for racer in racers:
+                member = self._cm.necrobot.find_member_with_id(racer.discord_id)
+                if member:
+                    if racer.timezone:
+                        r_tz = pytz.timezone(racer.timezone)
+                        r_dt = r_tz.normalize(utc_dt.astimezone(pytz.utc))
+                        yield from self._cm.necrobot.client.send_message(command.channel,
+                            '{0}: This match is suggested to be scheduled for {1} (your local time). Please confirm with `.confirm`.'.format(member.mention, condortimestr.get_time_str(r_dt)))
+                    else:
+                        yield from self._cm.necrobot.client.send_message(command.channel,
+                            '{0}: A match time has been suggested; please confirm with `.confirm`. I also suggest you register a timezone (use `.timezone`), so I can convert to your local time.'.format(member.mention))  
 
 class Stream(command.CommandType):
     def __init__(self, condor_module):
@@ -285,22 +366,22 @@ class CloseAllRaceChannels(command.CommandType):
             self._cm.condordb.delete_channel(channel.id)
             yield from self._cm.necrobot.client.delete_channel(channel)
 
-class PurgeChannel(command.CommandType):
-    def __init__(self, condor_module):
-        command.CommandType.__init__(self, 'purgechannel')
-        self.help_text = 'Delete all commands in this channel.'
-        self.suppress_help = True
-        self._cm = condor_module
-
-    def recognized_channel(self, channel):
-        return channel == self._cm.necrobot.main_channel
-
-    @asyncio.coroutine
-    def _do_execute(self, command):
-        if command.author == self._cm.necrobot.server.owner:
-            logs = yield from self._cm.client.logs_from(command.channel, limit=1000)
-            for message in logs:
-                yield from self._cm.client.delete_message(message)
+##class PurgeChannel(command.CommandType):
+##    def __init__(self, condor_module):
+##        command.CommandType.__init__(self, 'purgechannel')
+##        self.help_text = 'Delete all commands in this channel.'
+##        self.suppress_help = True
+##        self._cm = condor_module
+##
+##    def recognized_channel(self, channel):
+##        return channel == self._cm.necrobot.main_channel
+##
+##    @asyncio.coroutine
+##    def _do_execute(self, command):
+##        if command.author == self._cm.necrobot.server.owner:
+##            logs = yield from self._cm.client.logs_from(command.channel, limit=1000)
+##            for message in logs:
+##                yield from self._cm.client.delete_message(message)
 
 class CondorModule(command.Module):
     def __init__(self, necrobot, db_connection):
@@ -309,13 +390,13 @@ class CondorModule(command.Module):
         self.condorsheet = CondorSheet(self.condordb)
 
         self.command_types = [command.DefaultHelp(self),
-                              #MakeWeek(self),
-                              #PurgeChannel(self),
-                              #Schedule(self),
+                              Confirm(self),
+                              MakeWeek(self),
                               Stream(self),
+                              Suggest(self),
                               Timezone(self),
                               UserInfo(self),
-                              #CloseAllRaceChannels(self),
+                              CloseAllRaceChannels(self),
                               ]
 
     @property
