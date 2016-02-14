@@ -88,6 +88,7 @@ class DefaultHelp(CommandType):
             if found_any:
                 command_list_text = command_list_text[:-2]
                 yield from self.module.client.send_message(command.channel, command_list_text)
+            yield from self.module.client.send_message(command.channel, 'Documentation at https://github.com/incnone/condorbot/blob/master/documentation.md .')
         elif len(command.args) == 1:
             for cmd_type in self.module.command_types:
                 if cmd_type.called_by(command.args[0]) and cmd_type.recognized_channel(command.channel):
