@@ -20,11 +20,16 @@ def grouper(iterable, n, fillvalue=None):
     return zip_longest(*args, fillvalue=fillvalue)
 
 class CondorSheet(object):
+    def _get_match_date_str(utc_datetime):
+        gsheet_tz = pytz.timezone(config.GSHEET_TIMEZONE)
+        gsheet_dt = gsheet_tz.normalize(utc_datetime.replace(tzinfo=pytz.utc).astimezone(gsheet_tz))
+        return condortimestr.get_date_time_str(gsheet_dt)
+
     def _get_match_time_str(utc_datetime):
         gsheet_tz = pytz.timezone(config.GSHEET_TIMEZONE)
         gsheet_dt = gsheet_tz.normalize(utc_datetime.replace(tzinfo=pytz.utc).astimezone(gsheet_tz))
-        return condortimestr.get_time_str(gsheet_dt)
-
+        return condortimestr.get_time_time_str(gsheet_dt)
+    
     def __init__(self, condor_db):
         self._db = condor_db
         json_key = json.load(open(config.GSHEET_CREDENTIALS_FILENAME))
@@ -71,11 +76,17 @@ class CondorSheet(object):
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
-                scheduled_column = wks.find('Scheduled:')
-                if scheduled_column:
-                    wks.update_cell(match_row, scheduled_column.col, CondorSheet._get_match_time_str(match.time))
+                date_col = wks.find('Date:')
+                if date_col:
+                    wks.update_cell(match_row, date_col.col, CondorSheet._get_match_date_str(match.time))
                 else:
-                    print('Couldn\'t find the "Scheduled:" column on the GSheet.')
+                    print('Couldn\'t find the "Date:" column on the GSheet.')
+
+                time_col = wks.find('Time:')
+                if time_col:
+                    wks.update_cell(match_row, time_col.col, CondorSheet._get_match_time_str(match.time))
+                else:
+                    print('Couldn\'t find the "Time:" column on the GSheet.')
             else:
                 print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
         else:
