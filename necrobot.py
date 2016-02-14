@@ -19,6 +19,8 @@ class Necrobot(object):
         self.admin_id = None
         self.db_conn = db_conn
         self._main_channel = None
+        self._notifications_channel = None
+        self._schedule_channel = None
         self._wants_to_quit = False
 
     ## Initializes object; call after client has been logged in to discord
@@ -46,6 +48,8 @@ class Necrobot(object):
             exit(1)
 
         self._main_channel = self.find_channel(config.MAIN_CHANNEL_NAME)
+        self._notifications_channel = self.find_channel(config.NOTIFICATIONS_CHANNEL_NAME)
+        self._schedule_channel = self.find_channel(config.SCHEDULE_CHANNEL_NAME)
         self.load_module(AdminModule(self))
 
     # Causes the Necrobot to use the given module
@@ -63,6 +67,16 @@ class Necrobot(object):
     def main_channel(self):
         return self._main_channel
 
+    # Return the #bot_notifications channel
+    @property
+    def notifications_channel(self):
+        return self._notifications_channel
+    
+    # Return the #schedule channel
+    @property
+    def schedule_channel(self):
+        return self._schedule_channel
+    
     ## Get a list of all admin roles on the server
     @property
     def admin_roles(self):
@@ -88,6 +102,12 @@ class Necrobot(object):
             if channel.name == channel_name:
                 return channel
         return None
+
+    def find_channel_with_id(self, channel_id):
+        for channel in self.server.channels:
+            if int(channel.id) == int(channel_id):
+                return channel
+        return None        
 
     ## Returns a list of all members with a given username (capitalization ignored)
     def find_members(self, username):

@@ -6,16 +6,15 @@ year=2016
 channel_main=season4
 channel_admin=adminchat
 channel_schedule=schedule
+channel_notifications=bot_notifications
 
 admin_roles=CoNDOR Staff,Condorbot
 
+race_number_of_races=3
+race_alert_at_minutes=30
 race_countdown_time_seconds=10
 race_begin_counting_down_at=5
-race_record_after_seconds=120
-race_cleanup_after_room_is_silent_for_seconds=150
-race_cleanup_after_no_entrants_for_seconds=120
-race_give_cleanup_warning_after_no_entrants_for_seconds=60
-race_poke_delay=10
+race_record_after_seconds=10
 
 db_filename=data/condors4.db
 gsheet_credentials_filename=data/gsheet_credentials.json

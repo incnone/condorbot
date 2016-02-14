@@ -7,6 +7,8 @@ from condormatch import CondorMatch
 from condormatch import CondorRacer
 
 class CondorDB(object):
+    RACE_CANCELLED_FLAG = int(1) << 0
+    
     def __init__(self, db_connection):
         self._db_conn = db_connection
 
@@ -152,7 +154,7 @@ class CondorDB(object):
             for row in self._db_conn.execute("SELECT week_number,timestamp,flags FROM match_data WHERE racer_1_id=? AND racer_2_id=? ORDER BY week_number DESC", params):
                 match = CondorMatch(racer_1, racer_2, row[0])
                 if row[1]:
-                    match.time = datetime.datetime.utcfromtimestamp(int(row[1]))
+                    match.set_from_timestamp(int(row[1]))
                 match.flags = row[2]
                 return match
         else:
@@ -160,7 +162,7 @@ class CondorDB(object):
             for row in self._db_conn.execute("SELECT timestamp,flags FROM match_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
                 match = CondorMatch(racer_1, racer_2, week_number)
                 if row[0]:
-                    match.time = datetime.datetime.utcfromtimestamp(int(row[0]))
+                    match.set_from_timestamp(int(row[0]))
                 match.flags = row[1]
                 return match            
         return None
@@ -174,8 +176,8 @@ class CondorDB(object):
         return None
             
     def update_match(self, match):
-        params = (match.time.timestamp(), match.flags, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
-        self._db_conn.execute("UPDATE match_data SET timestamp=?,flags=? WHERE racer_1_id=?,racer_2_id=?,week_number=?", params)       
+        params = (match.timestamp, match.flags, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        self._db_conn.execute("UPDATE match_data SET timestamp=?,flags=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params)       
         self._db_conn.commit()               
 
     def get_cawmentator(self, match):
@@ -202,5 +204,98 @@ class CondorDB(object):
         params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
         self._db_conn.execute("UPDATE match_data SET cawmentator_id=0 WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params)
         self._db_conn.commit()
-            
+
+    def number_of_finished_races(self, match):
+        num_finished = 0
+        params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        for row in self._db_conn.execute("SELECT flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
+            if not row[0] & RACE_CANCELLED_FLAG:
+                num_finished += 1
+        return num_finished
+
+    def record_match(self, match):
+        num_cancelled = 0
+        r1_wins = 0
+        r2_wins = 0
+        draws = 0
+        noplays = config.RACE_NUMBER_OF_RACES
+        flags = match.flags
+                
+        params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        for row in self._db_conn.execute("SELECT winner,contested,flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
+            if int(row[1]):
+                flags = flags | CondorMatch.FLAG_CONTESTED
+            if row[2] & CondorDB.RACE_CANCELLED_FLAG:
+                num_cancelled += 1
+            else:
+                noplays -= 1
+                if int(row[0]) == 1:
+                    r1_wins += 1
+                elif int(row[0]) == 2:
+                    r2_wins += 1
+                else:
+                    draws += 1
+
+        params = (r1_wins, r2_wins, draws, noplays, num_cancelled, flags, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        self._db_conn.execute("UPDATE match_data SET racer_1_wins=?, racer_2_wins=?, draws=?, noplays=?, cancels=?, flags=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params)
+        self._db_conn.commit()                
         
+    def record_race(self, match, race_number, racer_1_time, racer_2_time, seed, timestamp, cancelled):
+        flags = 0
+        if cancelled:
+            flags = flags | CondorDB.RACE_CANCELLED_FLAG
+
+        winner = 0
+        if racer_1_time < racer_2_time:
+            winner = 1
+        elif racer_2_time < racer_1_time:
+            winner = 2
+        elif not cancelled:
+            winner = 3
+            
+        params = (self._get_racer_id(match.racer_1),
+                  self._get_racer_id(match.racer_2),
+                  match.week,
+                  race_number,
+                  timestamp,
+                  seed,
+                  racer_1_time,
+                  racer_2_time,
+                  winner,
+                  0,
+                  flags,)
+        self._db_conn.execute("INSERT INTO race_data (racer_1_id, racer_2_id, week_number, race_number, timestamp, seed, racer_1_time, racer_2_time, winner, contested, flags) VALUES (?,?,?,?,?,?,?,?,?,?,?)", params)
+        self._db_conn.commit()
+    
+    def set_contested(self, match, race_number, contesting_user):
+        R1_CONTESTED_FLAG = int(1) << 0
+        R2_CONTESTED_FLAG = int(1) << 1
+        OTHER_CONTESTED_FLAG = int(1) << 2
+
+        params = (self._get_racer_id(match.racer_1),
+                  self._get_racer_id(match.racer_2),
+                  match.week,
+                  race_number,)
+        found = False
+        contested = 0
+        for row in self._db_conn.execute("SELECT contested FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND race_number=?", params):
+            found = True
+            contested = int(row[0])
+        if not found:
+            print('Couldn\'t set a race contested, because I couldn\'t find it. Racers: {0} v {1}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
+            return
+        
+        if int(contesting_user.discord_id) == int(match.racer_1.discord_id):
+            contested = contested | R1_CONTESTED_FLAG
+        elif int(contesting_user.discord_id) == int(match.racer_2.discord_id):
+            contested = contested | R2_CONTESTED_FLAG
+        else:
+            contested = contested | OTHER_CONTESTED_FLAG
+            
+        params = (contested,
+                  self._get_racer_id(match.racer_1),
+                  self._get_racer_id(match.racer_2),
+                  match.week,
+                  race_number,)
+        self._db_conn.execute("UPDATE race_data SET contested=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND race_number=?", params)
+        self._db_conn.commit()
