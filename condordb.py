@@ -21,11 +21,12 @@ class CondorDB(object):
         return racer
 
     def _get_racer_id(self, condor_racer):
-        params = (condor_racer.twitch_name,)
-        for row in self._db_conn.execute("SELECT racer_id FROM user_data WHERE twitch_name=?", params):
+        params = (condor_racer.twitch_name.lower(),)
+        for row in self._db_conn.execute("SELECT racer_id FROM user_data WHERE LOWER(twitch_name)=?", params):
             return row[0]
 
         # if here, no entry
+        params = (condor_racer.twitch_name,)
         self._db_conn.execute("INSERT INTO user_data (twitch_name) VALUES (?)", params)
         self._db_conn.commit()
         for row in self._db_conn.execute("SELECT racer_id FROM user_data WHERE twitch_name=?", params):
@@ -35,7 +36,7 @@ class CondorDB(object):
         params = (racer_id,)
         for row in self._db_conn.execute("SELECT discord_id,discord_name,twitch_name,steam_id,timezone FROM user_data WHERE racer_id=?", params):
             return CondorDB._get_racer_from_row(row)
-        print('Couldn\'t find racer id <{}>.'.format(discord_id))
+        print('Couldn\'t find racer id <{}>.'.format(racer_id))
         return None            
 
     def get_from_discord_id(self, discord_id):
@@ -53,11 +54,12 @@ class CondorDB(object):
         return None        
 
     def get_from_twitch_name(self, twitch_name, register=False):
-        params = (twitch_name,)
-        for row in self._db_conn.execute("SELECT discord_id,discord_name,twitch_name,steam_id,timezone FROM user_data WHERE twitch_name=?", params):
+        params = (twitch_name.lower(),)
+        for row in self._db_conn.execute("SELECT discord_id,discord_name,twitch_name,steam_id,timezone FROM user_data WHERE LOWER(twitch_name)=?", params):
             return CondorDB._get_racer_from_row(row)
 
         if register:
+            params = (twitch_name,)
             self._db_conn.execute("INSERT INTO user_data (twitch_name) VALUES (?)", params)
             self._db_conn.commit()
             for row in self._db_conn.execute("SELECT discord_id,discord_name,twitch_name,steam_id,timezone FROM user_data WHERE twitch_name=?", params):
@@ -98,19 +100,21 @@ class CondorDB(object):
         self._db_conn.commit()
 
     def register_racer(self, racer):
-        params = (racer.twitch_name,)
-        full_params = (racer.discord_id, racer.discord_name, racer.steam_id, racer.timezone, racer.twitch_name,)
-        for row in self._db_conn.execute("SELECT discord_id,discord_name FROM user_data WHERE twitch_name=?", params):
+        params = (racer.twitch_name.lower(),)
+        for row in self._db_conn.execute("SELECT discord_id,discord_name FROM user_data WHERE LOWER(twitch_name)=?", params):
             if row[0] and not int(row[0]) == int(racer.discord_id):
                 print('Error: User {0} tried to register twitch name {1}, but that name is already registered to {2}.'.format(racer.discord_name, racer.twitch_name, row[1]))
-                return
+                return False
             else:
-                self._db_conn.execute("UPDATE user_data SET discord_id=?, discord_name=?, steam_id=?, timezone=? WHERE twitch_name=?", full_params)
+                params = (racer.discord_id, racer.discord_name, racer.twitch_name, racer.steam_id, racer.timezone, racer.twitch_name.lower(),)
+                self._db_conn.execute("UPDATE user_data SET discord_id=?, discord_name=?, twitch_name=?, steam_id=?, timezone=? WHERE LOWER(twitch_name)=?", params)
                 self._db_conn.commit()
-                return
-                
-        self._db_conn.execute("INSERT INTO user_data (discord_id, discord_name, timezone, steam_id, twitch_name) VALUES (?,?,?,?,?)", full_params)
+                return True
+
+        params = (racer.discord_id, racer.discord_name, racer.steam_id, racer.timezone, racer.twitch_name,)                
+        self._db_conn.execute("INSERT INTO user_data (discord_id, discord_name, timezone, steam_id, twitch_name) VALUES (?,?,?,?,?)", params)
         self._db_conn.commit()
+        return True
 
     def register_timezone(self, discord_id, timezone):
         params = (timezone, discord_id,)
@@ -172,6 +176,9 @@ class CondorDB(object):
         for row in self._db_conn.execute("SELECT racer_1_id,racer_2_id,week_number FROM channel_data WHERE channel_id=?", params):
             racer_1 = self._get_racer_from_id(row[0])
             racer_2 = self._get_racer_from_id(row[1])
+            if not racer_1 or not racer_2:
+                print('Error: couldn\'t find racers in CondorDB.get_match_from_channel_id.')
+                return None
             return self.get_match(racer_1, racer_2, int(row[2]))
         return None
             
@@ -209,10 +216,16 @@ class CondorDB(object):
         num_finished = 0
         params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
         for row in self._db_conn.execute("SELECT flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
-            if not row[0] & RACE_CANCELLED_FLAG:
+            if not row[0] & CondorDB.RACE_CANCELLED_FLAG:
                 num_finished += 1
         return num_finished
 
+    def largest_recorded_race_number(self, match):
+        params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        for row in self._db_conn.execute("SELECT race_number FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? ORDER BY race_number DESC", params):
+            return int(row[0])
+        return 0
+                
     def record_match(self, match):
         num_cancelled = 0
         r1_wins = 0
@@ -220,7 +233,7 @@ class CondorDB(object):
         draws = 0
         noplays = config.RACE_NUMBER_OF_RACES
         flags = match.flags
-                
+
         params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
         for row in self._db_conn.execute("SELECT winner,contested,flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
             if int(row[1]):
@@ -239,20 +252,42 @@ class CondorDB(object):
         params = (r1_wins, r2_wins, draws, noplays, num_cancelled, flags, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
         self._db_conn.execute("UPDATE match_data SET racer_1_wins=?, racer_2_wins=?, draws=?, noplays=?, cancels=?, flags=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params)
         self._db_conn.commit()                
+
+    #returns the list [racer_1_score, racer_2_score, draws]
+    def get_score(self, match):
+        params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        for row in self._db_conn.execute("SELECT racer_1_wins,racer_2_wins,draws FROM match_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
+            try:
+                r1wins = int(row[0])
+                r2wins = int(row[1])
+                draws = int(row[2])
+                return [r1wins, r2wins, draws]
+            except ValueError:
+                print('Error parsing an argument in CondorDB.get_score with racer_1_id = <{0}>, racer_2_id = <{1}>, week_number = <{2}>.'.format(self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week))
+                return
+                
+    def record_race(self, match, racer_1_time, racer_2_time, seed, timestamp, cancelled):
+        race_number = self.largest_recorded_race_number(match) + 1
         
-    def record_race(self, match, race_number, racer_1_time, racer_2_time, seed, timestamp, cancelled):
+        if racer_1_time <= 0 and racer_2_time <= 0:
+            cancelled = True
+
         flags = 0
         if cancelled:
             flags = flags | CondorDB.RACE_CANCELLED_FLAG
 
         winner = 0
-        if racer_1_time < racer_2_time:
+        if racer_1_time > 0 and racer_2_time <= 0:
+            winner = 1
+        elif racer_1_time <= 0 and racer_2_time > 0:
+            winner = 2
+        elif racer_1_time < racer_2_time:
             winner = 1
         elif racer_2_time < racer_1_time:
             winner = 2
         elif not cancelled:
             winner = 3
-            
+
         params = (self._get_racer_id(match.racer_1),
                   self._get_racer_id(match.racer_2),
                   match.week,
@@ -264,8 +299,13 @@ class CondorDB(object):
                   winner,
                   0,
                   flags,)
-        self._db_conn.execute("INSERT INTO race_data (racer_1_id, racer_2_id, week_number, race_number, timestamp, seed, racer_1_time, racer_2_time, winner, contested, flags) VALUES (?,?,?,?,?,?,?,?,?,?,?)", params)
-        self._db_conn.commit()
+        
+        try:
+            self._db_conn.execute("INSERT INTO race_data (racer_1_id, racer_2_id, week_number, race_number, timestamp, seed, racer_1_time, racer_2_time, winner, contested, flags) VALUES (?,?,?,?,?,?,?,?,?,?,?)", params)
+            self._db_conn.commit()
+        except Exception as e:
+            self._db_conn.rollback()
+            print('Error in recording race.')
     
     def set_contested(self, match, race_number, contesting_user):
         R1_CONTESTED_FLAG = int(1) << 0

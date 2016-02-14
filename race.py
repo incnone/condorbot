@@ -53,7 +53,7 @@ class Race(object):
 
         self._status = RaceStatus['entry_open'] 
         self.no_entrants_time = time.clock()
-        yield from self.room.write('Enter the race with `.enter`, and type `.ready` when ready. Finish the race with `.done` or `.forfeit`. Use `.help` for a command list.')
+##        yield from self.room.write('Enter the race with `.enter`, and type `.ready` when ready. Finish the race with `.done` or `.forfeit`. Use `.help` for a command list.')
 
     # Returns the race start datetime (UTC)
     @property
@@ -72,15 +72,11 @@ class Race(object):
     # Returns 'header' text for the race, giving info about the rules etc.
     @property
     def leaderboard_header(self):
-        room_rider = self.room.format_rider()
-        if room_rider:
-            room_rider = ' ' + room_rider
-
         seed_str = self.race_info.seed_str()
         if seed_str:
             seed_str = '\n' + seed_str
 
-        return self.race_info.format_str() + room_rider + seed_str + '\n'
+        return self.race_info.format_str() + seed_str + '\n'
                     
     # Returns a list of racers and their statuses.
     @property
@@ -394,7 +390,7 @@ class Race(object):
         return False
 
     # List the racers in order of finish time
-    @asyncio.coroutine
+    @property
     def racer_list(self):
         r_list = []
         max_time = 0

@@ -4,6 +4,7 @@ import datetime
 import gspread
 import json
 import pytz
+import re
 
 from itertools import zip_longest
 from oauth2client.client import SignedJwtAssertionCredentials
@@ -37,8 +38,8 @@ class CondorSheet(object):
         return self._gsheet.worksheet(worksheet_name)
         
     def _get_row(self, match, wks):
-        racer_1_cells = wks.findall(match.racer_1.gsheet_name)
-        racer_2_cells = wks.findall(match.racer_2.gsheet_name)
+        racer_1_cells = wks.findall(match.racer_1.gsheet_regex)
+        racer_2_cells = wks.findall(match.racer_2.gsheet_regex)
         for cell_1 in racer_1_cells:
             for cell_2 in racer_2_cells:
                 if cell_1.row == cell_2.row:
@@ -76,9 +77,44 @@ class CondorSheet(object):
                 else:
                     print('Couldn\'t find the "Scheduled:" column on the GSheet.')
             else:
-                print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.gsheet_name, match.racer_2.gsheet_name))
+                print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
         else:
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)
+
+    def record_match(self, match):
+        match_results = self._db.get_score(match)
+        if not match_results:
+            return
+        
+        wks = self._get_wks(match.week)
+        if wks:
+            match_row = self._get_row(match, wks)
+            if match_row:
+                winner = 'Draw'
+                if match_results[0] > match_results[1]:
+                    winner = match.racer_1.twitch_name
+                elif match_results[0] < match_results[1]:
+                    winner = match.racer_2.twitch_name
+
+                score_list = [match_results[0], match_results[1]]
+                score_list = list(sorted(score_list, reverse=True))
+                score_str = '=("{0}-{1}")'.format(score_list[0], score_list[1])
+                
+                winner_column = wks.find('Winner:')
+                if winner_column:
+                    wks.update_cell(match_row, winner_column.col, winner)
+                else:
+                    print('Couldn\'t find the "Winner:" column on the GSheet.')
+
+                score_column = wks.find('Game Score:')
+                if score_column:
+                    wks.update_cell(match_row, score_column.col, score_str)
+                else:
+                    print('Couldn\'t find the "Game Score:" column on the GSheet.')
+            else:
+                print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
+        else:
+            print('Couldn\'t find worksheet <{}>.'.worksheet_name)        
 
     def get_cawmentary(self, match):
         wks = self._get_wks(match.week)

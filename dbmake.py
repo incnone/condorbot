@@ -47,7 +47,7 @@ def make_new_database():
                     winner int DEFAULT -1,
                     contested int DEFAULT 0,
                     flags int DEFAULT 0,
-                    PRIMARY KEY (racer_1_id, racer_2_id, week_number, race_number) ON CONFLICT ABORT
+                    PRIMARY KEY (racer_1_id, racer_2_id, week_number, race_number) ON CONFLICT ABORT)
                     """)
     db_conn.commit()
     db_conn.close()

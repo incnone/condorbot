@@ -1,5 +1,6 @@
 import datetime
 import pytz
+import re
 
 import condortimestr
 import config
@@ -12,13 +13,16 @@ class CondorRacer(object):
         self.steam_id = None
         self.timezone = None
 
+    def __eq__(self, other):
+        return self.twitch_name.lower() == other.twitch_name.lower()
+
     @property
     def infostr(self):
         return '{0} (twitch.tv/{1}), timezone {2}'.format(self.discord_name, self.twitch_name, self.timezone)
 
     @property
-    def gsheet_name(self):
-        return self.twitch_name
+    def gsheet_regex(self):
+        return re.compile( r'(?i)' + re.escape(self.twitch_name) )
 
     def utc_to_local(self, utc_dt):
         if not self.timezone in pytz.all_timezones:

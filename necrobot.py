@@ -52,6 +52,11 @@ class Necrobot(object):
         self._schedule_channel = self.find_channel(config.SCHEDULE_CHANNEL_NAME)
         self.load_module(AdminModule(self))
 
+    @asyncio.coroutine
+    def init_modules(self):
+        for module in self.modules:
+            yield from module.initialize()
+
     # Causes the Necrobot to use the given module
     # Doesn't check for duplicates
     def load_module(self, module):

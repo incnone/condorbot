@@ -54,6 +54,8 @@ def on_ready():
 
     necrobot.load_module(CondorModule(necrobot, sqlite3.connect(config.DB_FILENAME)))
 
+    yield from necrobot.init_modules()
+
     print('...done.')
 
 @client.event

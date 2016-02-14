@@ -100,6 +100,10 @@ class Module(object):
         self.necrobot = necrobot
         self.command_types = []
 
+    @asyncio.coroutine
+    def initialize(self):
+        pass
+
     @property
     def client(self):
         return self.necrobot.client
