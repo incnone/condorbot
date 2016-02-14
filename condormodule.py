@@ -385,7 +385,7 @@ class UserInfo(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel.is_private or channel == self._cm.necrobot.main_channel
+        return channel.is_private or channel == self._cm.necrobot.main_channel or self._cm.condordb.is_registered_channel(channel.id)
 
     @asyncio.coroutine
     def _do_execute(self, command):

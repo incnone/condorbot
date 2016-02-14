@@ -279,19 +279,19 @@ class ForceForfeit(command.CommandType):
                     if racer.name.lower() == name.lower():
                         asyncio.ensure_future(self._room.race.forfeit_racer(racer))
 
-class ForceForfeitAll(command.CommandType):
-    def __init__(self, race_room):
-        command.CommandType.__init__(self, 'forceforfeitall')
-        self.help_text = 'Force all unfinished racers to forfeit the race.'
-        self.suppress_help = True
-        self._room = race_room
-
-    @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.race and self._room.is_race_admin(command.author) and not self._room.race.is_before_race:
-            for racer in self._room.race.racers.values():
-                if racer.is_racing:
-                    asyncio.ensure_future(self._room.race.forfeit_racer(racer))
+##class ForceForfeitAll(command.CommandType):
+##    def __init__(self, race_room):
+##        command.CommandType.__init__(self, 'forceforfeitall')
+##        self.help_text = 'Force all unfinished racers to forfeit the race.'
+##        self.suppress_help = True
+##        self._room = race_room
+##
+##    @asyncio.coroutine
+##    def _do_execute(self, command):
+##        if self._room.race and self._room.is_race_admin(command.author) and not self._room.race.is_before_race:
+##            for racer in self._room.race.racers.values():
+##                if racer.is_racing:
+##                    asyncio.ensure_future(self._room.race.forfeit_racer(racer))
 
 class ForceRecordRace(command.CommandType):
     def __init__(self, race_room):
@@ -429,7 +429,7 @@ class RaceRoom(command.Module):
                               ForceCancel(self),
                               #ForceClose(self),
                               ForceForfeit(self),
-                              ForceForfeitAll(self),
+                              #ForceForfeitAll(self),
                               ForceRecordRace(self),
                               ForceNewRace(self),
                               #Kick(self),
