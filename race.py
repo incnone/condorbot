@@ -58,29 +58,14 @@ class Race(object):
     # Returns the race start datetime (UTC)
     @property
     def start_time(self):
-        return pytz.utc.localize(self._start_datetime)
-
-    # Returns the string to go in the topic for the leaderboard
-    @property
-    def leaderboard(self):
-        new_leaderboard = '``` \n' + self.leaderboard_header + status_str(self._status) + '\n'
-        new_leaderboard += 'Entrants:\n'
-        new_leaderboard += self.leaderboard_text
-        new_leaderboard += '```'
-        return new_leaderboard
-   
-    # Returns 'header' text for the race, giving info about the rules etc.
-    @property
-    def leaderboard_header(self):
-        seed_str = self.race_info.seed_str()
-        if seed_str:
-            seed_str = '\n' + seed_str
-
-        return self.race_info.format_str() + seed_str + '\n'
+        if self._start_datetime:
+            return pytz.utc.localize(self._start_datetime)
+        else:
+            return None
                     
     # Returns a list of racers and their statuses.
     @property
-    def leaderboard_text(self):
+    def leaderboard(self):
         racer_list = []
         max_name_len = 0
         max_time = 0
@@ -95,7 +80,8 @@ class Race(object):
         #Sort racers: (1) Finished racers, by time; (2) Forfeit racers; (3) Racers still racing
         racer_list.sort(key=lambda r: r.time if r.is_finished else (max_time if r.is_forfeit else max_time+1))
 
-        text = ''
+        text = self.race_info.seed_str() + '\n'
+        text += status_str(self._status) + '\n'
         rank = int(0)
         for racer in racer_list:
             rank += 1
@@ -197,16 +183,16 @@ class Race(object):
         self._status = RaceStatus['racing']
         asyncio.ensure_future(self.room.update_leaderboard())
 
-    # Checks to see if all racers have either finished or forfeited. If so, ends the race.
+    # Checks to see if any racer has either finished or forfeited. If so, ends the race.
     # Return True if race was ended.
     @asyncio.coroutine
     def _check_for_race_end(self):
         for r_id in self.racers:
-            if not self.racers[r_id].is_done_racing:
-                return False
+            if self.racers[r_id].is_done_racing:
+                yield from self._end_race()
+                return True
 
-        yield from self._end_race()
-        return True
+        return False
 
     # Ends the race, and begins a countdown until the results are 'finalized' (record results, and racers can no longer `.undone`, `.comment`, etc)
     @asyncio.coroutine
@@ -243,13 +229,8 @@ class Race(object):
         asyncio.ensure_future(self.room.update_leaderboard())
 
         yield from asyncio.sleep(1) # Waiting for a short time feels good UI-wise
-        if self.num_finished:
-            yield from self.room.write('The race is over. Results will be recorded in {} seconds.'.format(config.FINALIZE_TIME_SEC))
-        else:
-            yield from self.room.write('All racers have forfeit. This race will be cancelled in {} seconds.'.format(config.FINALIZE_TIME_SEC))
-
-        yield from asyncio.sleep(config.FINALIZE_TIME_SEC)
-            
+        yield from self.room.write('The race will end in {} seconds.'.format(config.FINALIZE_TIME_SEC))
+        yield from asyncio.sleep(config.FINALIZE_TIME_SEC)       
         yield from self._finalize_race()
             
     # Finalizes the race
@@ -341,7 +322,7 @@ class Race(object):
     # Puts the given Racer in the 'finished' state and gets their time
     @asyncio.coroutine
     def finish_racer(self, racer):
-        if self._status != RaceStatus['racing']:
+        if self.is_before_race:
             return False
         
         finish_time = int(100*(time.clock() - self._start_time))
@@ -404,15 +385,13 @@ class Race(object):
         r_list.sort(key=lambda r: r.time if r.is_finished else max_time)
         return r_list
 
-##    # Cancel the race.
-##    @asyncio.coroutine
-##    def cancel(self):
-##        asyncio.ensure_future(self.cancel_countdown())
-##        success = yield from self.cancel_finalization()
-##        self._status = RaceStatus['cancelled']
-##        yield from self.room.write('The race has been cancelled.')
-##        asyncio.ensure_future(self.room.update_leaderboard())
-##
+    # Cancel the race.
+    @asyncio.coroutine
+    def cancel(self):
+        asyncio.ensure_future(self.cancel_countdown())
+        yield from self.cancel_finalization()
+        self._status = RaceStatus['cancelled']
+
 ##    # Reset the race.
 ##    @asyncio.coroutine
 ##    def reset(self):

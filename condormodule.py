@@ -141,11 +141,17 @@ class MakeWeek(command.CommandType):
                 return
 
             if week != -1:
-                matches = self._cm.condorsheet.get_matches(week)
-                if matches:
-                    for match in matches:
-                        yield from self._cm.make_match_channel(match)
-                        yield from asyncio.sleep(1)
+                yield from self._cm.necrobot.client.send_message(command.channel, 'Making race rooms for week {0}...'.format(week))
+                try:
+                    matches = self._cm.condorsheet.get_matches(week)
+                    if matches:
+                        for match in matches:
+                            yield from self._cm.make_match_channel(match)
+                            yield from asyncio.sleep(1)
+                    yield from self._cm.necrobot.client.send_message(command.channel, 'All matches made.')
+                except Exception as e:
+                    yield from self._cm.necrobot.client.send_message(command.channel, 'An error occurred. Please call `.makeweek` again.')
+                    raise e
 
 class Staff(command.CommandType):
     def __init__(self, condor_module):

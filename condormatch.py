@@ -95,6 +95,14 @@ class CondorMatch(object):
         td = datetime.timedelta(seconds=timestamp)
         self._time = CondorMatch.OFFSET_DATETIME + td
 
+    def racer_number(self, racer):
+        if racer == self.racer_1:
+            return 1
+        elif racer == self.racer_2:
+            return 2
+        else:
+            return 0
+
     @property
     def racer_1(self):
         return self._racer_1

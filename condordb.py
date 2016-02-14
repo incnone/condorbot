@@ -8,6 +8,7 @@ from condormatch import CondorRacer
 
 class CondorDB(object):
     RACE_CANCELLED_FLAG = int(1) << 0
+    RACE_FORCE_RECORDED_FLAG = int(1) << 1
     
     def __init__(self, db_connection):
         self._db_conn = db_connection
@@ -220,6 +221,19 @@ class CondorDB(object):
                 num_finished += 1
         return num_finished
 
+    def number_of_wins(self, match, racer):
+        num_wins = 0
+        racer_id = self._get_racer_id(racer)
+        racer_number = match.racer_number(racer)
+        if racer_number == 1 or racer_number == 2:
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week, racer_number) 
+            for row in self._db_conn.execute("SELECT flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND winner=?", params):
+                num_wins += 1
+        else:
+            print('Error: called CondorDB.number_of_wins on a racer not in a match (racer {0}, match {1} v {2}).'.format(racer.twitch_name, match.racer_1.twitch_name, match.racer_2.twitch_name))
+
+        return num_wins
+
     def largest_recorded_race_number(self, match):
         params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
         for row in self._db_conn.execute("SELECT race_number FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? ORDER BY race_number DESC", params):
@@ -266,27 +280,13 @@ class CondorDB(object):
                 print('Error parsing an argument in CondorDB.get_score with racer_1_id = <{0}>, racer_2_id = <{1}>, week_number = <{2}>.'.format(self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week))
                 return
                 
-    def record_race(self, match, racer_1_time, racer_2_time, seed, timestamp, cancelled):
+    def record_race(self, match, racer_1_time, racer_2_time, winner, seed, timestamp, cancelled, force_recorded=False):
         race_number = self.largest_recorded_race_number(match) + 1
-        
-        if racer_1_time <= 0 and racer_2_time <= 0:
-            cancelled = True
-
         flags = 0
         if cancelled:
             flags = flags | CondorDB.RACE_CANCELLED_FLAG
-
-        winner = 0
-        if racer_1_time > 0 and racer_2_time <= 0:
-            winner = 1
-        elif racer_1_time <= 0 and racer_2_time > 0:
-            winner = 2
-        elif racer_1_time < racer_2_time:
-            winner = 1
-        elif racer_2_time < racer_1_time:
-            winner = 2
-        elif not cancelled:
-            winner = 3
+        if force_recorded:
+            flags = flags | CondorDB.RACE_FORCE_RECORDED_FLAG
 
         params = (self._get_racer_id(match.racer_1),
                   self._get_racer_id(match.racer_2),
@@ -325,9 +325,9 @@ class CondorDB(object):
             print('Couldn\'t set a race contested, because I couldn\'t find it. Racers: {0} v {1}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
             return
         
-        if int(contesting_user.discord_id) == int(match.racer_1.discord_id):
+        if int(contesting_user.id) == int(match.racer_1.discord_id):
             contested = contested | R1_CONTESTED_FLAG
-        elif int(contesting_user.discord_id) == int(match.racer_2.discord_id):
+        elif int(contesting_user.id) == int(match.racer_2.discord_id):
             contested = contested | R2_CONTESTED_FLAG
         else:
             contested = contested | OTHER_CONTESTED_FLAG

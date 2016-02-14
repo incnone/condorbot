@@ -16,6 +16,7 @@ def init(config_filename):
     #prerace
     global RACE_NUMBER_OF_RACES
     global RACE_ALERT_AT_MINUTES
+    global RACE_NOTIFY_IF_TIMES_WITHIN_SEC
 
     #race
     global COUNTDOWN_LENGTH                        #number of seconds between the final .ready and race start
@@ -42,7 +43,8 @@ def init(config_filename):
         'race_alert_at_minutes':'30',
         'race_countdown_time_seconds':'10',
         'race_begin_counting_down_at':'5',
-        'race_record_after_seconds':'10',
+        'race_end_after_first_done_seconds':'15',
+        'race_notify_if_times_within_seconds':'5',
         'db_filename':'data/condors4.db',
         'gsheet_credentials_filename':'data/gsheet_credentials.json',
         'gsheet_doc_name':'CoNDOR Season 4',
@@ -79,9 +81,10 @@ def init(config_filename):
 
     RACE_NUMBER_OF_RACES = int(defaults['race_number_of_races'])
     RACE_ALERT_AT_MINUTES = int(defaults['race_alert_at_minutes'])
+    RACE_NOTIFY_IF_TIMES_WITHIN_SEC = int(defaults['race_notify_if_times_within_seconds'])
     COUNTDOWN_LENGTH = int(defaults['race_countdown_time_seconds'])
     INCREMENTAL_COUNTDOWN_START = int(defaults['race_begin_counting_down_at'])
-    FINALIZE_TIME_SEC = int(defaults['race_record_after_seconds'])
+    FINALIZE_TIME_SEC = int(defaults['race_end_after_first_done_seconds'])
 
     DB_FILENAME = defaults['db_filename']
     GSHEET_CREDENTIALS_FILENAME = defaults['gsheet_credentials_filename']

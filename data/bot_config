@@ -1,5 +1,5 @@
 bot_command_prefix=.
-bot_version=0.1.0
+bot_version=0.2.0
 
 year=2016
 
@@ -8,15 +8,16 @@ channel_admin=adminchat
 channel_schedule=schedule
 channel_notifications=bot_notifications
 
-admin_roles=CoNDOR Staff,Condorbot
+admin_roles=CoNDOR Staff,Necrobot
 
 race_number_of_races=3
 race_alert_at_minutes=30
 race_countdown_time_seconds=10
 race_begin_counting_down_at=5
-race_record_after_seconds=10
+race_end_after_first_done_seconds=15
+race_notify_if_times_within_seconds=5
 
 db_filename=data/condors4.db
 gsheet_credentials_filename=data/gsheet_credentials.json
-gsheet_doc_name=CoNDOR Season 4 Test
+gsheet_doc_name=CoNDOR Season 4 Matchup Chart
 gsheet_timezone=US/Eastern
