@@ -300,15 +300,15 @@ class Suggest(command.CommandType):
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: Couldn\'t parse your arguments as a date and time. Model is, e.g., `.suggest March 9 5:30p`.')
                 return
-            elif not schedule_args[0]:
+            elif schedule_args[0] == None:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: Couldn\'t parse {0} as the name of a month.'.format(command.args[0]))
                 return
-            elif not schedule_args[1]:
+            elif schedule_args[1] == None:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: Couldn\'t parse {0} as a day of the month.'.format(command.args[1]))
                 return
-            elif not schedule_args[2] or not schedule_args[3]:
+            elif schedule_args[2] == None or schedule_args[3] == None:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: Couldn\'t parse {0} as a time.'.format(command.args[2]))
                 return
@@ -551,15 +551,15 @@ class ForceRescheduleUTC(command.CommandType):
                     yield from self._cm.necrobot.client.send_message(command.channel,
                         'Error: Couldn\'t parse your arguments as a date and time. Model is, e.g., `.suggest March 9 5:30p`.')
                     return
-                elif not schedule_args[0]:
+                elif schedule_args[0] == None:
                     yield from self._cm.necrobot.client.send_message(command.channel,
                         'Error: Couldn\'t parse {0} as the name of a month.'.format(command.args[0]))
                     return
-                elif not schedule_args[1]:
+                elif schedule_args[1] == None:
                     yield from self._cm.necrobot.client.send_message(command.channel,
                         'Error: Couldn\'t parse {0} as a day of the month.'.format(command.args[1]))
                     return
-                elif not schedule_args[2] or not schedule_args[3]:
+                elif schedule_args[2] == None or schedule_args[3] == None:
                     yield from self._cm.necrobot.client.send_message(command.channel,
                         'Error: Couldn\'t parse {0} as a time.'.format(command.args[2]))
                     return
@@ -633,7 +633,7 @@ class ForceUpdate(command.CommandType):
 class ForceTransferAccount(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forcetransferaccount')
-        self.help_text = 'Transfers a user account from one Discord user to another. Usage is `.forcetransferaccount @from @to . These must be Discord mentions.'
+        self.help_text = 'Transfers a user account from one Discord user to another. Usage is `.forcetransferaccount @from @to`. These must be Discord mentions.'
         self._cm = condor_module
 
     def recognized_channel(self, channel): 
