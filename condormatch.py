@@ -55,6 +55,10 @@ class CondorMatch(object):
     FLAG_PLAYED = int(1) << 5
     FLAG_CONTESTED = int(1) << 6
 
+    def notflag(flag):
+        FULL_FLAG = (int(1) << 7) - 1
+        return FULL_FLAG - flag
+
     def __init__(self, racer_1, racer_2, week):
         self._racer_1 = racer_1
         self._racer_2 = racer_2
@@ -188,10 +192,10 @@ class CondorMatch(object):
 
     def schedule(self, time, racer):
         self.flags = self.flags | CondorMatch.FLAG_SCHEDULED
-        if racer.twitch_name == self.racer_1.twitch_name:
-            self.flags = self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1
-        elif racer.twitch_name == self.racer_2.twitch_name:
-            self.flags = self.flags | CondorMatch.FLAG_SCHEDULED_BY_R2
+        if racer and racer.twitch_name == self.racer_1.twitch_name:
+            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1) & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R2)) 
+        elif racer and racer.twitch_name == self.racer_2.twitch_name:
+            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R2) & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R1)) 
 
         if time.tzinfo is not None and time.tzinfo.utcoffset(time) is not None:
             self._time = time.astimezone(pytz.utc)

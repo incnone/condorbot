@@ -246,7 +246,7 @@ class CondorDB(object):
         r2_wins = 0
         draws = 0
         noplays = config.RACE_NUMBER_OF_RACES
-        flags = match.flags
+        flags = match.flags | CondorMatch.FLAG_PLAYED
 
         params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
         for row in self._db_conn.execute("SELECT winner,contested,flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):

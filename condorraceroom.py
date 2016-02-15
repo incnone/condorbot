@@ -363,6 +363,8 @@ class ForceNewRace(command.CommandType):
                 yield from self._room.record_race(cancelled=True)
             yield from self._room.begin_new_race()
 
+
+
 ##class ForceMatchDraw(command.CommandType):
 ##    def __init__(self, race_room):
 ##        command.CommandType.__init__(self, 'forcematchdraw')

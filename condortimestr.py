@@ -17,4 +17,7 @@ def get_date_time_str(dt):
 def get_time_time_str(dt):
     hour = dt.strftime("%I").lstrip('0')
     pm_str = dt.strftime("%p").lower()
-    return dt.strftime("{0}:%M{1} %Z".format(hour, pm_str))
+    return dt.strftime("{0}:%M{1}".format(hour, pm_str))
+
+def get_gsheet_time_str(dt):
+    return dt.strftime("%m/%d/%Y %H:%M:%S")
