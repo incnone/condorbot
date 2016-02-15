@@ -146,8 +146,15 @@ class MakeWeek(command.CommandType):
                     matches = self._cm.condorsheet.get_matches(week)
                     if matches:
                         for match in matches:
-                            yield from self._cm.make_match_channel(match)
-                            yield from asyncio.sleep(1)
+                            print('{0}-{1}'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
+                        for match in matches:
+                            print('Making {0}-{1}...'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
+                            success = yield from self._cm.make_match_channel(match)
+                            if success:
+                                print('...done')
+                                yield from asyncio.sleep(1)
+                            else:
+                                print('...already made.')
                     yield from self._cm.necrobot.client.send_message(command.channel, 'All matches made.')
                 except Exception as e:
                     yield from self._cm.necrobot.client.send_message(command.channel, 'An error occurred. Please call `.makeweek` again.')
@@ -497,7 +504,7 @@ class CondorModule(command.Module):
         if already_made_id:
             for ch in self.necrobot.server.channels:
                 if int(ch.id) == int(already_made_id):
-                    return
+                    return False
         
         open_match_info = self.condordb.get_open_match_channel_info(match.week)
         channel = None
@@ -550,6 +557,7 @@ class CondorModule(command.Module):
             yield from self.client.edit_channel_permissions(channel, role, allow=read_permit)
 
         yield from self.update_match_channel(match)
+        return True
     
     # makes a new "race room" in the match channel if not already made
     @asyncio.coroutine
