@@ -100,6 +100,11 @@ class CondorDB(object):
         self._db_conn.execute("DELETE FROM channel_data WHERE channel_id=?", params)
         self._db_conn.commit()
 
+    def transfer_racer_to(self, twitch_name, discord_member):
+        params = (discord_member.id, discord_member.name, twitch_name.lower(),)
+        self._db_conn.execute("UPDATE user_data SET discord_id=?, discord_name=? WHERE LOWER(twitch_name)=?", params)
+        self._db_conn.commit()
+
     def register_racer(self, racer):
         params = (racer.twitch_name.lower(),)
         for row in self._db_conn.execute("SELECT discord_id,discord_name FROM user_data WHERE LOWER(twitch_name)=?", params):

@@ -5,6 +5,7 @@ import gspread
 import json
 import pytz
 import re
+import xml
 
 from itertools import zip_longest
 from oauth2client.client import SignedJwtAssertionCredentials
@@ -38,8 +39,20 @@ class CondorSheet(object):
         return self._gsheet.worksheet(worksheet_name)
         
     def _get_row(self, match, wks):
-        racer_1_cells = wks.findall(match.racer_1.gsheet_regex)
-        racer_2_cells = wks.findall(match.racer_2.gsheet_regex)
+        racer_1_cells = []
+        racer_1_regex = match.racer_1.gsheet_regex
+        racer_2_cells = []
+        racer_2_regex = match.racer_2.gsheet_regex
+        try:
+            racer_1_cells = wks.findall(racer_1_regex)
+        except xml.etree.ElementTree.ParseError:
+            print('Error: Couldn\'t find racer name: {0}; Regex: {1}'.format(match.racer_1.twitch_name, racer_1_regex.pattern))
+
+        try:
+            racer_2_cells = wks.findall(racer_2_regex)
+        except xml.etree.ElementTree.ParseError:
+            print('Error: Couldn\'t find racer name: {0}; Regex: {1}'.format(match.racer_2.twitch_name, racer_2_regex.pattern))
+        
         for cell_1 in racer_1_cells:
             for cell_2 in racer_2_cells:
                 if cell_1.row == cell_2.row:

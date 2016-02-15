@@ -2,6 +2,9 @@ import calendar
 import datetime
 
 def get_time_str(dt):
+    if not dt:
+        return ''
+    
     weekday = calendar.day_name[dt.weekday()]
     day = dt.strftime("%d").lstrip('0')
     hour = dt.strftime("%I").lstrip('0')

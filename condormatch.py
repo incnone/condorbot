@@ -147,31 +147,34 @@ class CondorMatch(object):
         if self.played:
             topic += 'The match is over.' # TODO result information            
         elif self.scheduled or self.confirmed:
-            utc_str = condortimestr.get_time_str(self.time)
-            racer_1_str = condortimestr.get_time_str(self.racer_1.utc_to_local(self.time))
-            racer_2_str = condortimestr.get_time_str(self.racer_2.utc_to_local(self.time))
-            if self.confirmed:
-                topic += 'This match is scheduled for {0}.\n'.format(utc_str)
-            elif self.scheduled:
-                topic += 'The following time has been suggested: {0}.\n'.format(utc_str)
-
-            topic += '   {0}\'s local time: {1}\n'.format(self.racer_1.twitch_name, racer_1_str)
-            topic += '   {0}\'s local time: {1}\n'.format(self.racer_2.twitch_name, racer_2_str)
-
-            if self.scheduled and not self.confirmed:
-                conf_racers = ''
-                if not self.is_confirmed_by(self.racer_1):
-                    conf_racers += self.racer_1.twitch_name + ', '
-                if not self.is_confirmed_by(self.racer_2):
-                    conf_racers += self.racer_2.twitch_name + ', '
-                    
-                if conf_racers:
-                    topic += 'Waiting on confirmation from: {0}'.format(conf_racers[:-2])
-                else:
-                    topic += 'Error: everyone has confirmed but the race is not marked as scheduled. ' \
-                             'Please contact CoNDOR Staff.'
+            if not self.time:
+                topic += 'Error: This match is marked as scheduled, but no time is stored.'
             else:
-                topic += 'This schedule has been confirmed by both racers.'
+                utc_str = condortimestr.get_time_str(self.time)
+                racer_1_str = condortimestr.get_time_str(self.racer_1.utc_to_local(self.time))
+                racer_2_str = condortimestr.get_time_str(self.racer_2.utc_to_local(self.time))
+                if self.confirmed:
+                    topic += 'This match is scheduled for {0}.\n'.format(utc_str)
+                elif self.scheduled:
+                    topic += 'The following time has been suggested: {0}.\n'.format(utc_str)
+
+                topic += '   {0}\'s local time: {1}\n'.format(self.racer_1.twitch_name, racer_1_str)
+                topic += '   {0}\'s local time: {1}\n'.format(self.racer_2.twitch_name, racer_2_str)
+
+                if self.scheduled and not self.confirmed:
+                    conf_racers = ''
+                    if not self.is_confirmed_by(self.racer_1):
+                        conf_racers += self.racer_1.twitch_name + ', '
+                    if not self.is_confirmed_by(self.racer_2):
+                        conf_racers += self.racer_2.twitch_name + ', '
+                        
+                    if conf_racers:
+                        topic += 'Waiting on confirmation from: {0}'.format(conf_racers[:-2])
+                    else:
+                        topic += 'Error: everyone has confirmed but the race is not marked as scheduled. ' \
+                                 'Please contact CoNDOR Staff.'
+                else:
+                    topic += 'This schedule has been confirmed by both racers.'
         else:
             topic += 'This match has not been scheduled yet. After agreeing on a time,\n' \
                      'have one racer suggest this time by typing, e.g., ".suggest February\n' \
@@ -190,7 +193,7 @@ class CondorMatch(object):
         else:
             return False
 
-    def schedule(self, time, racer):
+    def schedule(self, time, racer, unconfirm=False):
         self.flags = self.flags | CondorMatch.FLAG_SCHEDULED
         if racer and racer.twitch_name == self.racer_1.twitch_name:
             self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1) & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R2)) 
@@ -201,6 +204,9 @@ class CondorMatch(object):
             self._time = time.astimezone(pytz.utc)
         else:
             self._time = pytz.utc.localize(time)
+
+        if unconfirm:
+            self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1) & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
 
     def confirm(self, racer):
         if racer.twitch_name == self.racer_1.twitch_name:

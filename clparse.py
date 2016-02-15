@@ -54,3 +54,11 @@ def pop_command_from_list(args, cmd_list):
 
     return list_to_return
     
+def get_id_from_discord_mention(arg):
+    if arg.startswith('<@') and arg.endswith('>'):
+        new_arg = arg[2:-1]
+        try:
+            return int(new_arg)
+        except ValueError:
+            return None
+    return None

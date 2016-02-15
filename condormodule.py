@@ -6,6 +6,7 @@ import calendar
 from pytz import timezone
 import pytz
 
+import clparse
 import command
 import condortimestr
 import config
@@ -15,6 +16,48 @@ from condormatch import CondorMatch
 from condormatch import CondorRacer
 from condorraceroom import RaceRoom
 from condorsheet import CondorSheet
+
+def parse_schedule_args(command):
+    if not len(command.args) == 3:
+        return None
+
+    parsed_args = []
+
+    month_name = command.args[0].capitalize()
+    if not month_name in calendar.month_name:
+        parsed_args.append(None)
+    else:
+        parsed_args.append(list(calendar.month_name).index(month_name))
+    
+    try:            
+        parsed_args.append(int(command.args[1]))
+    except ValueError:
+        parsed_args.append(None)
+        
+    time_args = command.args[2].split(':')
+    if len(time_args) != 2:
+        parsed_args.append(None)
+        parsed_args.append(None)
+        return parsed_args
+
+    try:
+        time_min = int(time_args[1].rstrip('apm'))
+        parsed_args.append(time_min)
+    except ValueError:
+        parsed_args.append(None)
+
+    try:
+        time_hr = int(time_args[0])
+        if (time_args[1].endswith('p') or time_args[1].endswith('pm')) and not time_hr == 12:
+            time_hr += 12
+        elif (time_args[1].endswith('a') or time_args[1].endswith('am')) and time_hr == 12:
+            time_hr = 0
+        
+        parsed_args.append(time_hr)
+    except ValueError:
+        parsed_args.append(None)
+
+    return parsed_args
 
 class Cawmentate(command.CommandType):
     def __init__(self, condor_module):
@@ -251,40 +294,29 @@ class Suggest(command.CommandType):
                     'Error: {0} does not appear to be one of the racers in this match. ' \
                     'If this is in error, contact CoNDOR Staff.'.format(command.author.mention))
                 return
-                
-            month_name = command.args[0].capitalize()
-            if not month_name in calendar.month_name:
+
+            schedule_args = parse_schedule_args(command)
+            if not schedule_args:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t parse your arguments as a date and time. Model is, e.g., `.suggest March 9 5:30p`.')
+                return
+            elif not schedule_args[0]:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: Couldn\'t parse {0} as the name of a month.'.format(command.args[0]))
                 return
-            month = list(calendar.month_name).index(month_name)
-
-            day = -1
-            try:            
-                day = int(command.args[1])
-            except ValueError:
+            elif not schedule_args[1]:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: Couldn\'t parse {0} as a day of the month.'.format(command.args[1]))
-                return                
-                
-            time_args = command.args[2].split(':')
-            if len(time_args) != 2:
+                return
+            elif not schedule_args[2] or not schedule_args[3]:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: Couldn\'t parse {0} as a time.'.format(command.args[2]))
                 return
 
-            try:
-                time_min = int(time_args[1].rstrip('apm'))
-                time_hr = int(time_args[0])
-            except ValueError:
-                yield from self._cm.necrobot.client.send_message(command.channel,
-                    'Error: Couldn\'t parse {0} as a time.'.format(command.args[2]))
-                return                
-
-            if (time_args[1].endswith('p') or time_args[1].endswith('pm')) and not time_hr == 12:
-                time_hr += 12
-            elif (time_args[1].endswith('a') or time_args[1].endswith('am')) and time_hr == 12:
-                time_hr = 0
+            month = schedule_args[0]
+            day = schedule_args[1]
+            time_min = schedule_args[2]
+            time_hr = schedule_args[3]            
 
             utc_dt = racer.local_to_utc(datetime.datetime(config.SEASON_YEAR, month, day, time_hr, time_min, 0))
             if not utc_dt:
@@ -489,6 +521,82 @@ class ForceConfirm(command.CommandType):
                 
             yield from self._cm.update_match_channel(match)
 
+class ForceRescheduleUTC(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'forcerescheduleutc')
+        self.help_text = 'Forces the race to be rescheduled for a specific UTC time. Usage same as `.suggest`, e.g., `.forcereschedule February 18 ' \
+                         '2:30p`, except that the timezone is always taken to be UTC. This command unschedules the match and `.suggests` a new time. ' \
+                         'Use `.forceconfirm` after if you wish to automatically have the racers confirm this new time.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._cm.necrobot.is_admin(command.author):
+            if len(command.args) != 3:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t parse your arguments as a date and time. Model is, e.g., `.suggest March 9 5:30p`.')
+                return
+            else:
+                match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+                if not match:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        'Error: This match wasn\'t found in the database. Please contact CoNDOR Staff.')
+                    return          
+
+                schedule_args = parse_schedule_args(command)
+                if not schedule_args:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        'Error: Couldn\'t parse your arguments as a date and time. Model is, e.g., `.suggest March 9 5:30p`.')
+                    return
+                elif not schedule_args[0]:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        'Error: Couldn\'t parse {0} as the name of a month.'.format(command.args[0]))
+                    return
+                elif not schedule_args[1]:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        'Error: Couldn\'t parse {0} as a day of the month.'.format(command.args[1]))
+                    return
+                elif not schedule_args[2] or not schedule_args[3]:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        'Error: Couldn\'t parse {0} as a time.'.format(command.args[2]))
+                    return
+
+                month = schedule_args[0]
+                day = schedule_args[1]
+                time_min = schedule_args[2]
+                time_hr = schedule_args[3]            
+
+                utc_dt = pytz.utc.localize(datetime.datetime(config.SEASON_YEAR, month, day, time_hr, time_min, 0))
+
+                time_until = utc_dt - pytz.utc.localize(datetime.datetime.utcnow())
+                if not time_until.total_seconds() > 0:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        '{0}: Error: The time you are suggesting for the match appears to be in the past.'.format(command.author.mention))
+                    return                
+
+                match.schedule(utc_dt, None, unconfirm=True)
+
+                #update the db
+                self._cm.condordb.update_match(match)
+
+                #output what we did
+                yield from self._cm.update_match_channel(match)
+                racers = [match.racer_1, match.racer_2]
+                for racer in racers:
+                    member = self._cm.necrobot.find_member_with_id(racer.discord_id)
+                    if member:
+                        if racer.timezone:
+                            r_tz = pytz.timezone(racer.timezone)
+                            r_dt = r_tz.normalize(utc_dt.astimezone(pytz.utc))
+                            yield from self._cm.necrobot.client.send_message(command.channel,
+                                '{0}: This match is suggested to be scheduled for {1}. Please confirm with `.confirm`.'.format(member.mention, condortimestr.get_time_str(r_dt)))
+                        else:
+                            yield from self._cm.necrobot.client.send_message(command.channel,
+                                '{0}: A match time has been suggested; please confirm with `.confirm`. I also suggest you register a timezone (use `.timezone`), so I can convert to your local time.'.format(member.mention))  
+
 class ForceUpdate(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forceupdate')
@@ -522,6 +630,44 @@ class ForceUpdate(command.CommandType):
                 
             yield from self._cm.update_match_channel(match)
 
+class ForceTransferAccount(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'forcetransferaccount')
+        self.help_text = 'Transfers a user account from one Discord user to another. Usage is `.forcetransferaccount @from @to . These must be Discord mentions.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel): 
+        return not channel.is_private
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._cm.necrobot.is_admin(command.author):
+            if len(command.args) != 2:
+                yield from self._cm.client.send_message(command.channel, '{0}: Error: Wrong number of args for `.forcetransferaccount`.'.format(command.author.mention))
+                return
+
+            from_id = clparse.get_id_from_discord_mention(command.args[0])
+            to_id = clparse.get_id_from_discord_mention(command.args[1])
+            if not from_id:
+                yield from self._cm.client.send_message(command.channel, '{0}: Error parsing first argument as a discord mention.'.format(command.author.mention))
+                return
+            if not to_id:
+                yield from self._cm.client.send_message(command.channel, '{0}: Error parsing second argument as a discord mention.'.format(command.author.mention))
+                return                
+
+            to_member = self._cm.necrobot.find_member_with_id(to_id)
+            if not to_member:
+                yield from self._cm.client.send_message(command.channel, '{0}: Error finding member with id {1} on the server.'.format(command.author.mention, to_id))
+                return  
+
+            from_racer = self._cm.condordb.get_from_discord_id(from_id)
+            if not from_racer:
+                yield from self._cm.client.send_message(command.channel, '{0}: Error finding member with id {1} in the database.'.format(command.author.mention, from_id))
+                return
+
+            self._cm.condordb.transfer_racer_to(from_racer.twitch_name, to_member)
+            yield from self._cm.client.send_message(command.channel, '{0}: Transfered racer account {1} to member {2}.'.format(command.author.mention, from_racer.twitch_name, to_member.mention))
+            
 ##class PurgeChannel(command.CommandType):
 ##    def __init__(self, condor_module):
 ##        command.CommandType.__init__(self, 'purgechannel')
@@ -557,7 +703,9 @@ class CondorModule(command.Module):
                               CloseAllRaceChannels(self),
                               ForceBeginMatch(self),
                               ForceConfirm(self),
+                              ForceRescheduleUTC(self),
                               ForceUpdate(self),
+                              ForceTransferAccount(self),
                               ]
 
     @asyncio.coroutine
@@ -667,7 +815,7 @@ class CondorModule(command.Module):
             asyncio.ensure_future(room.initialize())
 
     @asyncio.coroutine
-    def update_match_channel(self, match):
+    def update_match_channel(self, match):        
         if match.confirmed and match.time_until_alert < datetime.timedelta(seconds=1):
             yield from self.make_race_room(match)
         else:

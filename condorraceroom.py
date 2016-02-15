@@ -339,16 +339,17 @@ class ForceRecordRace(command.CommandType):
                         yield from self._room.write('Couldn\'t parse {0} as a time.'.format(arg))
                         return
                     else:
-                        if (parse_loser_time and winner == 2) or (not parse_loser_time and winner == 1):
+                        if (parse_loser_time and winner_int == 2) or (not parse_loser_time and winner_int == 1):
                             racer_1_time = time
-                        elif winner != 0:
+                        elif winner_int != 0:
                             racer_2_time = time
                         else:
                             yield from self._room.write('I can\'t parse racer times in races with no winner.')
                             return
                 
-            self._room.condordb.record_race(self._room.match, racer_1_time, racer_2_time, winner, seed, int(0), False, force_recorded=True)
-
+            self._room.condordb.record_race(self._room.match, racer_1_time, racer_2_time, winner_int, seed, int(0), False, force_recorded=True)
+            yield from self._room.write('Forced record of a race.')
+            
 class ForceNewRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcenewrace')
