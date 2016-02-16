@@ -731,6 +731,6 @@ class RaceRoom(command.Module):
     @asyncio.coroutine
     def record_match(self):
         self._cm.condordb.record_match(self.match)
-        self._cm.condorsheet.record_match(self.match)
+        yield from self._cm.condorsheet.record_match(self.match)
         yield from self.write('Match results recorded.')      
         yield from self.update_leaderboard()

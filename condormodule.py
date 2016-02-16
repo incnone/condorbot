@@ -148,7 +148,7 @@ class Confirm(command.CommandType):
             '{0}: Confirmed acceptance of match time {1}.'.format(command.author.mention, condortimestr.get_time_str(racer_dt)))
 
         if match.confirmed:
-            self._cm.condorsheet.schedule_match(match)
+            yield from self._cm.condorsheet.schedule_match(match)
             yield from self._cm.necrobot.client.send_message(command.channel, 'The match has been officially scheduled.')
             yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
                 '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
@@ -185,7 +185,7 @@ class MakeWeek(command.CommandType):
             if week != -1:
                 yield from self._cm.necrobot.client.send_message(command.channel, 'Making race rooms for week {0}...'.format(week))
                 try:
-                    matches = self._cm.condorsheet.get_matches(week)
+                    matches = yield from self._cm.condorsheet.get_matches(week)
                     if matches:
                         for match in matches:
                             success = yield from self._cm.make_match_channel(match)
@@ -515,7 +515,7 @@ class ForceConfirm(command.CommandType):
                 '{0} has forced confirmation of match time: {1}.'.format(command.author.mention, condortimestr.get_time_str(match.time)))
 
             if match.confirmed:
-                self._cm.condorsheet.schedule_match(match)
+                yield from self._cm.condorsheet.schedule_match(match)
                 yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
                     '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
                 
@@ -621,12 +621,12 @@ class ForceUpdate(command.CommandType):
                 return
 
             if match.confirmed:
-                self._cm.condorsheet.schedule_match(match)
+                yield from self._cm.condorsheet.schedule_match(match)
                 yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
                     '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
 
             if match.played:
-                self._cm.condorsheet.record_match(match)
+                yield from self._cm.condorsheet.record_match(match)
                 
             yield from self._cm.update_match_channel(match)
             yield from self._cm.necrobot.client.send_message(command.channel, 'Updated.')                

@@ -28,6 +28,7 @@ class CondorSheet(object):
         return condortimestr.get_gsheet_time_str(gsheet_dt)
     
     def __init__(self, condor_db):
+        self._lock = asyncio.Lock()
         self._db = condor_db
         json_key = json.load(open(config.GSHEET_CREDENTIALS_FILENAME))
         scope = ['https://spreadsheets.google.com/feeds']
@@ -49,17 +50,39 @@ class CondorSheet(object):
             racer_2_cells = wks.findall(racer_2_regex)
         except xml.etree.ElementTree.ParseError as e:
             timestamp = datetime.datetime.utcnow()
-            print('XML parse error when looking up racer names: {0}, {1}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
+            print('{0}: XML parse error when looking up racer names: {1}, {2}.'.format(timestamp.strftime("%Y/%m/%d %H:%M:%S"), match.racer_1.twitch_name, match.racer_2.twitch_name))
             print(e)
             traceback.print_exc()
-            return None
+            raise
         
         for cell_1 in racer_1_cells:
             for cell_2 in racer_2_cells:
                 if cell_1.row == cell_2.row:
                     return cell_1.row
-                
-    def get_matches(self, week):       
+
+    def _reauthorize(self):
+        gc = gspread.authorize(credentials)
+        self._gsheet = gc.open(config.GSHEET_DOC_NAME)
+
+    @asyncio.coroutine
+    def _do_with_lock(self, function, *args, **kwargs):
+        yield from self._lock
+        try:
+            to_return = yield from function(*args, **kwargs)
+            return to_return
+        except xml.etree.ElementTree.ParseError as e:
+            self._reauthorize()
+            to_return = yield from function(*args, **kwargs)
+            return to_return
+        finally:
+            self._lock.release()
+
+    @asyncio.coroutine
+    def get_matches(self, week):
+        return self._do_with_lock(self._get_matches, week)
+
+    @asyncio.coroutine       
+    def _get_matches(self, week):
         wks = self._get_wks(week)
         if wks:
             matches = []
@@ -80,7 +103,12 @@ class CondorSheet(object):
         else:
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)
 
+    @asyncio.coroutine
     def schedule_match(self, match):
+        return self._do_with_lock(self._schedule_match, match)    
+
+    @asyncio.coroutine
+    def _schedule_match(self, match):
         wks = self._get_wks(match.week)
         if wks:
             match_row = self._get_row(match, wks)
@@ -112,7 +140,12 @@ class CondorSheet(object):
         else:
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)
 
+    @asyncio.coroutine
     def record_match(self, match):
+        return self._do_with_lock(self._record_match, match)
+
+    @asyncio.coroutine
+    def _record_match(self, match):
         match_results = self._db.get_score(match)
         if not match_results:
             return
@@ -147,6 +180,7 @@ class CondorSheet(object):
         else:
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)        
 
+    @asyncio.coroutine
     def get_cawmentary(self, match):
         wks = self._get_wks(match.week)
         if wks:
@@ -156,6 +190,7 @@ class CondorSheet(object):
                 cawmentary_cell = wks.cell(match_row, cawmentary_column)
                 return cawmentary_cell.value
 
+    @asyncio.coroutine
     def add_cawmentary(self, match, cawmentator_twitchname):
         wks = self._get_wks(match.week)
         if wks:
@@ -168,6 +203,7 @@ class CondorSheet(object):
                 else:
                     wks.update_cell(match_row, cawmentary_column, 'twitch.tv/{}'.format(cawmentator))
 
+    @asyncio.coroutine
     def remove_cawmentary(self, match):
         wks = self._get_wks(match.week)
         if wks:
