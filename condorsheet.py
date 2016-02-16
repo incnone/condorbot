@@ -32,8 +32,8 @@ class CondorSheet(object):
         self._db = condor_db
         json_key = json.load(open(config.GSHEET_CREDENTIALS_FILENAME))
         scope = ['https://spreadsheets.google.com/feeds']
-        credentials = SignedJwtAssertionCredentials(json_key['client_email'], json_key['private_key'].encode(), scope)
-        gc = gspread.authorize(credentials)
+        self._credentials = SignedJwtAssertionCredentials(json_key['client_email'], json_key['private_key'].encode(), scope)
+        gc = gspread.authorize(self._credentials)
         self._gsheet = gc.open(config.GSHEET_DOC_NAME)
 
     def _get_wks(self, week):
@@ -61,7 +61,7 @@ class CondorSheet(object):
                     return cell_1.row
 
     def _reauthorize(self):
-        gc = gspread.authorize(credentials)
+        gc = gspread.authorize(self._credentials)
         self._gsheet = gc.open(config.GSHEET_DOC_NAME)
 
     @asyncio.coroutine
