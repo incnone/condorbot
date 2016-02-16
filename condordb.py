@@ -48,8 +48,8 @@ class CondorDB(object):
         return None         
 
     def get_from_discord_name(self, discord_name):
-        params = (discord_name,)
-        for row in self._db_conn.execute("SELECT discord_id,discord_name,twitch_name,steam_id,timezone FROM user_data WHERE discord_name=?", params):
+        params = (discord_name.lower(),)
+        for row in self._db_conn.execute("SELECT discord_id,discord_name,twitch_name,steam_id,timezone FROM user_data WHERE LOWER(discord_name)=?", params):
             return CondorDB._get_racer_from_row(row)
         print('Couldn\'t find discord name <{}>.'.format(discord_name))
         return None        

@@ -45,13 +45,12 @@ class CondorSheet(object):
         racer_2_regex = match.racer_2.gsheet_regex
         try:
             racer_1_cells = wks.findall(racer_1_regex)
-        except xml.etree.ElementTree.ParseError:
-            print('Error: Couldn\'t find racer name: {0}; Regex: {1}'.format(match.racer_1.twitch_name, racer_1_regex.pattern))
-
-        try:
             racer_2_cells = wks.findall(racer_2_regex)
-        except xml.etree.ElementTree.ParseError:
-            print('Error: Couldn\'t find racer name: {0}; Regex: {1}'.format(match.racer_2.twitch_name, racer_2_regex.pattern))
+        except xml.etree.ElementTree.ParseError as e:
+            timestamp = datetime.datetime.utcnow()
+            print('XML parse error when looking up racer names: {0}, {1}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
+            print(e)            
+            return None
         
         for cell_1 in racer_1_cells:
             for cell_2 in racer_2_cells:

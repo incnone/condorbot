@@ -620,15 +620,16 @@ class ForceUpdate(command.CommandType):
                     'Error: A scheduled time for this match has not been suggested. One of the racers should use `.suggest` to suggest a time.')
                 return
 
-            self._cm.condordb.update_match(match)
-
             if match.confirmed:
                 self._cm.condorsheet.schedule_match(match)
-                yield from self._cm.necrobot.client.send_message(command.channel, 'Updated.')
                 yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
                     '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
+
+            if match.played:
+                self._cm.condorsheet.record_match(match)
                 
             yield from self._cm.update_match_channel(match)
+            yield from self._cm.necrobot.client.send_message(command.channel, 'Updated.')                
 
 class ForceTransferAccount(command.CommandType):
     def __init__(self, condor_module):
