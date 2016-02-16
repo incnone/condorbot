@@ -6,6 +6,7 @@ import json
 import pytz
 import re
 import xml
+import traceback
 
 from itertools import zip_longest
 from oauth2client.client import SignedJwtAssertionCredentials
@@ -49,7 +50,8 @@ class CondorSheet(object):
         except xml.etree.ElementTree.ParseError as e:
             timestamp = datetime.datetime.utcnow()
             print('XML parse error when looking up racer names: {0}, {1}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
-            print(e)            
+            print(e)
+            traceback.print_exc()
             return None
         
         for cell_1 in racer_1_cells:
