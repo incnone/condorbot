@@ -54,9 +54,11 @@ class CondorMatch(object):
     FLAG_CONFIRMED_BY_R2 = int(1) << 4
     FLAG_PLAYED = int(1) << 5
     FLAG_CONTESTED = int(1) << 6
+    FLAG_UNCONFIRMED_BY_R1 = int(1) << 7
+    FLAG_UNCONFIRMED_BY_R2 = int(1) << 8
 
     def notflag(flag):
-        FULL_FLAG = (int(1) << 7) - 1
+        FULL_FLAG = (int(1) << 9) - 1
         return FULL_FLAG - flag
 
     def __init__(self, racer_1, racer_2, week):
@@ -210,8 +212,24 @@ class CondorMatch(object):
 
     def confirm(self, racer):
         if racer.twitch_name == self.racer_1.twitch_name:
-            self.flags = self.flags | CondorMatch.FLAG_CONFIRMED_BY_R1
+            self.flags = (self.flags | CondorMatch.FLAG_CONFIRMED_BY_R1) & CondorMatch.notflag(CondorMatch.FLAG_UNCONFIRMED_BY_R1)
         elif racer.twitch_name == self.racer_2.twitch_name:
-            self.flags = self.flags | CondorMatch.FLAG_CONFIRMED_BY_R2        
+            self.flags = (self.flags | CondorMatch.FLAG_CONFIRMED_BY_R2) & CondorMatch.notflag(CondorMatch.FLAG_UNCONFIRMED_BY_R2)        
 
-    
+    def unconfirm(self, racer):
+        if self.played:
+            return
+        
+        if racer.twitch_name == self.racer_1.twitch_name:
+            self.flags = self.flags | CondorMatch.FLAG_UNCONFIRMED_BY_R1
+            if not self.confirmed:
+                self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1)
+        elif racer.twitch_name == self.racer_2.twitch_name:
+            self.flags = self.flags | CondorMatch.FLAG_UNCONFIRMED_BY_R2
+            if not self.confirmed:
+                self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1)
+                
+        if self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R1 and self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R2:
+            self.flags = 0
+            self._time = None
+            

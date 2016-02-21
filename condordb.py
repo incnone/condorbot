@@ -157,6 +157,18 @@ class CondorDB(object):
             channel_ids.append(int(row[0]))
         return channel_ids
 
+    def get_race_channels_from_week(self, week):
+        channel_ids = []
+        params = (week,)
+        for row in self._db_conn.execute("SELECT channel_id FROM channel_data WHERE week_number=?", params):
+            channel_ids.append(int(row[0]))
+        return channel_ids        
+
+    def delete_channel(self, channel_id):
+        params = (channel_id,)
+        self._db_conn.execute("DELETE FROM channel_data WHERE channel_id=?", params)
+        self._db_conn.commit()
+
     ## Gets the most recent match if no week given
     def get_match(self, racer_1, racer_2, week_number=None):
         if week_number == None:
@@ -165,7 +177,7 @@ class CondorDB(object):
                 match = CondorMatch(racer_1, racer_2, row[0])
                 if row[1]:
                     match.set_from_timestamp(int(row[1]))
-                match.flags = row[2]
+                match.flags = int(row[2])
                 return match
         else:
             params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number)
@@ -173,7 +185,7 @@ class CondorDB(object):
                 match = CondorMatch(racer_1, racer_2, week_number)
                 if row[0]:
                     match.set_from_timestamp(int(row[0]))
-                match.flags = row[1]
+                match.flags = int(row[1])
                 return match            
         return None
 
@@ -191,7 +203,21 @@ class CondorDB(object):
     def update_match(self, match):
         params = (match.timestamp, match.flags, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
         self._db_conn.execute("UPDATE match_data SET timestamp=?,flags=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params)       
-        self._db_conn.commit()               
+        self._db_conn.commit()
+
+    def get_upcoming_matches(self, time):
+        matches = []
+        for row in self._db_conn.execute("SELECT racer_1_id,racer_2_id,week_number,timestamp,flags FROM match_data ORDER BY timestamp ASC"):
+            racer_1 = self._get_racer_from_id(row[0])
+            racer_2 = self._get_racer_from_id(row[1])
+            week = int(row[2])
+            match = CondorMatch(racer_1, racer_2, week)
+            match.flags = int(row[4])
+            if match.confirmed and not match.played:
+                match.set_from_timestamp(int(row[3]))
+                if match.time - time > datetime.timedelta(minutes=-30):
+                    matches.append(match)
+        return matches
 
     def get_cawmentator(self, match):
         params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
@@ -311,6 +337,15 @@ class CondorDB(object):
         except Exception as e:
             self._db_conn.rollback()
             print('Error in recording race.')
+
+    def change_winner(self, match, race_number, winner_number):
+        params = (winner_number,
+                  self._get_racer_id(match.racer_1),
+                  self._get_racer_id(match.racer_2),
+                  match.week,
+                  race_number,)
+        self._db_conn.execute("UPDATE race_data SET winner=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND race_number=?", params)
+        self._db_conn.commit()
     
     def set_contested(self, match, race_number, contesting_user):
         R1_CONTESTED_FLAG = int(1) << 0

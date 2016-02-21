@@ -293,6 +293,38 @@ class ForceForfeit(command.CommandType):
 ##                if racer.is_racing:
 ##                    asyncio.ensure_future(self._room.race.forfeit_racer(racer))
 
+class ForceChangeWinner(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'forcechangewinner')
+        self.help_text = 'Change the winner of a specified race. Usage is `.forcechangewinner <race number> <winner\'s twitch name>`.'
+        self._room = race_room
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._room.is_race_admin(command.author):
+            if len(command.args) != 2:
+                yield from self._room.write('Wrong number of arguments for `.forcechangewinner`.')
+                return
+
+            try:
+                race_int = int(command.args[0])
+            except ValueError:
+                yield from self._room.write('Error: couldn\'t parse {0} as a race number.'.format(command.args[0]))
+                return
+
+            winner_name = command.args[1].lower()
+            if winner_name == self._room.match.racer_1.twitch_name.lower():
+                winner_int = 1
+            elif winner_name == self._room.match.racer_2.twitch_name.lower():
+                winner_int = 2
+            else:
+                yield from self._room.write('I don\'t recognize the twitch name {}.'.format(winner_name))
+                return
+
+            self._room.condordb.change_winner(self._room.match, race_int, winner_int)
+            yield from self._room.write('Recorded {0} as the winner of race {1}.'.format(command.args[1], race_int))
+            yield from self._room.update_leaderboard()
+
 class ForceRecordRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcerecordrace')
@@ -430,6 +462,7 @@ class RaceRoom(command.Module):
                               Time(self),
                               Contest(self),
                               ForceCancel(self),
+                              ForceChangeWinner(self),
                               #ForceClose(self),
                               ForceForfeit(self),
                               #ForceForfeitAll(self),
@@ -518,9 +551,8 @@ class RaceRoom(command.Module):
                 topic += 'Match complete. \n'
             else:
                 topic += 'Current race: #{}\n'.format(race_number)
-
-            if self.race:
-                topic += self.race.leaderboard
+                if self.race:
+                    topic += self.race.leaderboard
 
             topic += '\n ```'
             asyncio.ensure_future(self.client.edit_channel(self.channel, topic=topic))
@@ -599,6 +631,8 @@ class RaceRoom(command.Module):
                         discord_name = ' (Discord name: {0})'.format(racer.discord_name)
                     minutes_until_race = int( (self.match.time_until_match.total_seconds() + 30) // 60)
                     yield from self.alert_staff('Alert: {0}{1} has not yet shown up for their match, which is scheduled in {2} minutes.'.format(racer.twitch_name, discord_name, minutes_until_race))
+
+            yield from self._cm.post_match_alert(self.match)
 
             yield from asyncio.sleep(self.match.time_until_match.total_seconds())
             yield from self.begin_new_race()

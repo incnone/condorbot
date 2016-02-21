@@ -94,14 +94,45 @@ class CondorSheet(object):
             racers = wks.range('{0}:{1}'.format(ul_addr, lr_addr))
 
             for cell in grouper(racers, 2, None):
-                racer_1 = self._db.get_from_twitch_name(cell[0].value, register=True)
-                racer_2 = self._db.get_from_twitch_name(cell[1].value, register=True)
+                racer_1 = self._db.get_from_twitch_name(cell[0].value.rstrip(' '), register=True)
+                racer_2 = self._db.get_from_twitch_name(cell[1].value.rstrip(' '), register=True)
                 if racer_1 and racer_2:
                     matches.append(CondorMatch(racer_1, racer_2, week))
 
             return matches
         else:
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)
+
+    @asyncio.coroutine
+    def unschedule_match(self, match):
+        return self._do_with_lock(self._unschedule_match, match)
+
+    @asyncio.coroutine
+    def _unschedule_match(self, match):
+        wks = self._get_wks(match.week)
+        if wks:
+            match_row = self._get_row(match, wks)
+            if match_row:
+                date_col = None
+                sched_col = None
+                try:
+                    date_col = wks.find('Date:')
+                except gspread.exceptions.CellNotFound:
+                    date_col = None
+                try:
+                    sched_col = wks.find('Scheduled:')
+                except gspread.exceptions.CellNotFound:
+                    sched_col = None
+                    
+                the_col = date_col if date_col else (sched_col if sched_col else None)
+                if the_col:
+                    wks.update_cell(match_row, the_col.col, '')
+                else:
+                    print('Couldn\'t find either the "Date:" or "Scheduled:" column on the GSheet.')
+            else:
+                print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
+        else:
+            print('Couldn\'t find worksheet <{}>.'.worksheet_name)            
 
     @asyncio.coroutine
     def schedule_match(self, match):
@@ -186,9 +217,17 @@ class CondorSheet(object):
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
-                cawmentary_column = wks.find('Cawmentary')
-                cawmentary_cell = wks.cell(match_row, cawmentary_column)
-                return cawmentary_cell.value
+                cawmentary_column = wks.find('Cawmentary:')
+                if cawmentary_column:
+                    cawmentary_cell = wks.cell(match_row, cawmentary_column.col)
+                    args = cawmentary_cell.value.split('/')
+                    if args and args[0] == 'twitch.tv':
+                        return args[len(args) - 1].rstrip(' ')
+                else:
+                    print('Couldn\'t find the Cawmentary: column.')
+            else:
+                print('Couldn\'t find row for match.')
+        return None
 
     @asyncio.coroutine
     def add_cawmentary(self, match, cawmentator_twitchname):
@@ -196,7 +235,7 @@ class CondorSheet(object):
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
-                cawmentary_column = wks.find('Cawmentary')
+                cawmentary_column = wks.find('Cawmentary:')
                 cawmentary_cell = wks.cell(match_row, cawmentary_column)
                 if cawmentary_cell.value:
                     print('Error: tried to add cawmentary to a match that already had it.')
@@ -209,5 +248,5 @@ class CondorSheet(object):
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
-                cawmentary_column = wks.find('Cawmentary')
+                cawmentary_column = wks.find('Cawmentary:')
                 cawmentary_cell = wks.update_cell(match_row, cawmentary_column, '')

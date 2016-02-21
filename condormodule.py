@@ -150,10 +150,11 @@ class Confirm(command.CommandType):
         if match.confirmed:
             yield from self._cm.condorsheet.schedule_match(match)
             yield from self._cm.necrobot.client.send_message(command.channel, 'The match has been officially scheduled.')
-            yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
-                '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
+##            yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
+##                '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
             
         yield from self._cm.update_match_channel(match)
+        yield from self._cm.update_schedule_channel()
     
 class MakeWeek(command.CommandType):
     def __init__(self, condor_module):
@@ -187,14 +188,52 @@ class MakeWeek(command.CommandType):
                 try:
                     matches = yield from self._cm.condorsheet.get_matches(week)
                     if matches:
+                        matches = sorted(matches, key=lambda m: m.racer_1.twitch_name.lower())
                         for match in matches:
                             success = yield from self._cm.make_match_channel(match)
                             if success:
-                                yield from asyncio.sleep(1)
+                                yield from asyncio.sleep(0.5)
                     yield from self._cm.necrobot.client.send_message(command.channel, 'All matches made.')
                 except Exception as e:
                     yield from self._cm.necrobot.client.send_message(command.channel, 'An error occurred. Please call `.makeweek` again.')
                     raise e
+
+class CloseWeek(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'closeweek')
+        self.help_text = 'Close the race rooms for a week. Saves text in their channels to a .log file.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.admin_channel
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if len(command.args) != 1:
+            print('Error in closeweek: wrong command arg length.')
+        else:
+            week = -1
+            try:
+                week = int(command.args[0])
+            except ValueError:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error in makeweek: couldn\'t parse arg <{}> as a week number.'.format(command.args[0]))
+                return
+
+            if week != -1:
+                yield from self._cm.necrobot.client.send_message(command.channel, 'Closing race rooms for week {0}...'.format(week))
+                try:
+                    channel_ids = self._cm.condordb.get_race_channels_from_week(week)
+                    if channel_ids:
+                        for channel_id in channel_ids:
+                            channel = self._cm.necrobot.find_channel_with_id(channel_id)
+                            if channel:
+                                yield from self._cm.save_and_delete(channel)
+                                yield from asyncio.sleep(0.5)
+                    yield from self._cm.necrobot.client.send_message(command.channel, 'All racerooms closed.')
+                except Exception as e:
+                    yield from self._cm.necrobot.client.send_message(command.channel, 'An error occurred. Please call `.closeweek` again.')
+                    raise e        
 
 class Staff(command.CommandType):
     def __init__(self, condor_module):
@@ -275,6 +314,12 @@ class Suggest(command.CommandType):
             if not match:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: This match wasn\'t found in the database. Please contact CoNDOR Staff.')
+                return
+
+            if match.confirmed:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'The scheduled time for this match has already been confirmed by both racers. To reschedule, both ' \
+                    'racers should first call `.unconfirm`; you will then be able to `.suggest` a new time.')
                 return
             
             racer = self._cm.condordb.get_from_discord_id(command.author.id)
@@ -410,6 +455,59 @@ class Uncawmentate(command.CommandType):
             self._cm.condordb.remove_cawmentary(match)
             self._cm.condorsheet.remove_cawmentary(match)
 
+
+class Unconfirm(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'unconfirm')
+        self.help_text = 'If the schedule has not yet been confirmed by both racers, undoes an earlier `.confirm`. If the schedule ' \
+                         'has been confirmed by both racers, then both racers need to call `.unconfirm` to unschedule the match.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+        if not match:
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Error: This match wasn\'t found in the database. Please contact CoNDOR Staff.')
+            return
+
+        racer = self._cm.condordb.get_from_discord_id(command.author.id)
+        if not racer:
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Error: {0} is not registered. Please register with `.stream` in the main channel. ' \
+                'If the problem persists, contact CoNDOR Staff.'.format(command.author.mention))
+            return          
+
+        if not match.is_confirmed_by(racer):
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                '{0}: You haven\'t yet confirmed the suggested time.'.format(command.author.mention))
+            return 
+
+        match_confirmed = match.confirmed
+        match.unconfirm(racer)
+        self._cm.condordb.update_match(match)
+
+        #if match was scheduled...
+        if match_confirmed:
+            #...and still is
+            if match.confirmed:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    '{0} wishes to remove the current scheduled time. The other racer must also `.unconfirm`.'.format(command.author))
+            #...and now is not
+            else:
+                yield from self._cm.condorsheet.unschedule_match(match)
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'The match has been unscheduled. Please `.suggest` a new time when one has been agreed upon.')
+        #if match was not scheduled
+        else:
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                '{0} has unconfirmed the current suggested time.'.format(command.author))
+
+        yield from self._cm.update_match_channel(match)
+
 class UserInfo(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'userinfo')
@@ -516,10 +614,11 @@ class ForceConfirm(command.CommandType):
 
             if match.confirmed:
                 yield from self._cm.condorsheet.schedule_match(match)
-                yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
-                    '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
+##                yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
+##                    '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
                 
             yield from self._cm.update_match_channel(match)
+            yield from self._cm.update_schedule_channel()
 
 class ForceRescheduleUTC(command.CommandType):
     def __init__(self, condor_module):
@@ -622,13 +721,14 @@ class ForceUpdate(command.CommandType):
 
             if match.confirmed:
                 yield from self._cm.condorsheet.schedule_match(match)
-                yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
-                    '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
+##                yield from self._cm.necrobot.client.send_message(self._cm.necrobot.schedule_channel,
+##                    '{0} v {1}: {2}.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, condortimestr.get_time_str(match.time)))
 
             if match.played:
                 yield from self._cm.condorsheet.record_match(match)
                 
             yield from self._cm.update_match_channel(match)
+            yield from self._cm.update_schedule_channel()
             yield from self._cm.necrobot.client.send_message(command.channel, 'Updated.')                
 
 class ForceTransferAccount(command.CommandType):
@@ -668,23 +768,6 @@ class ForceTransferAccount(command.CommandType):
 
             self._cm.condordb.transfer_racer_to(from_racer.twitch_name, to_member)
             yield from self._cm.client.send_message(command.channel, '{0}: Transfered racer account {1} to member {2}.'.format(command.author.mention, from_racer.twitch_name, to_member.mention))
-            
-##class PurgeChannel(command.CommandType):
-##    def __init__(self, condor_module):
-##        command.CommandType.__init__(self, 'purgechannel')
-##        self.help_text = 'Delete all commands in this channel.'
-##        self.suppress_help = True
-##        self._cm = condor_module
-##
-##    def recognized_channel(self, channel):
-##        return channel == self._cm.necrobot.main_channel
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if command.author == self._cm.necrobot.server.owner:
-##            logs = yield from self._cm.client.logs_from(command.channel, limit=1000)
-##            for message in logs:
-##                yield from self._cm.client.delete_message(message)
 
 class CondorModule(command.Module):
     def __init__(self, necrobot, db_connection):
@@ -695,13 +778,15 @@ class CondorModule(command.Module):
 
         self.command_types = [command.DefaultHelp(self),
                               Confirm(self),
+                              CloseWeek(self),
                               MakeWeek(self),
                               Staff(self),
                               Stream(self),
                               Suggest(self),
                               Timezone(self),
+                              Unconfirm(self),
                               UserInfo(self),
-                              CloseAllRaceChannels(self),
+                              #CloseAllRaceChannels(self),
                               ForceBeginMatch(self),
                               ForceConfirm(self),
                               ForceRescheduleUTC(self),
@@ -712,6 +797,7 @@ class CondorModule(command.Module):
     @asyncio.coroutine
     def initialize(self):
         yield from self.run_channel_alerts()
+        yield from self.update_schedule_channel()
 
     @property
     def infostr(self):
@@ -741,48 +827,53 @@ class CondorModule(command.Module):
     @asyncio.coroutine
     def make_match_channel(self, match):
         already_made_id = self.condordb.find_match_channel_id(match)
-        if already_made_id:
+        while already_made_id:
             for ch in self.necrobot.server.channels:
                 if int(ch.id) == int(already_made_id):
                     return False
-        
-        open_match_info = self.condordb.get_open_match_channel_info(match.week)
-        channel = None
 
-        if open_match_info:
-            for ch in self.necrobot.server.channels:
-                if int(ch.id) == int(open_match_info[0]):
-                    channel = ch
-            if not channel:
-                print('Error: couldn\'t find a registered channel.')
-                open_match_info = None
+            self.condordb.delete_channel(already_made_id)
+            already_made_id = self.condordb.find_match_channel_id(match)
+        
+##        open_match_info = self.condordb.get_open_match_channel_info(match.week)
+##        open_match_info = None
+##        channel = None
+        
+##        if open_match_info:
+##            for ch in self.necrobot.server.channels:
+##                if int(ch.id) == int(open_match_info[0]):
+##                    channel = ch
+##            if not channel:
+##                print('Error: couldn\'t find a registered channel.')
+##                open_match_info = None
                 
         # if there was no open channel, make one
-        if not open_match_info:
-            channel = yield from self.client.create_channel(self.necrobot.server, self.get_match_channel_name(match))
-            channel_id = channel.id
+##        if not open_match_info:
+        channel = yield from self.client.create_channel(self.necrobot.server, self.get_match_channel_name(match))
+        channel_id = channel.id
 
-            read_permit = discord.Permissions.none()
-            read_permit.read_messages = True
-            yield from self.client.edit_channel_permissions(channel, self.necrobot.server.default_role, deny=read_permit)
-            asyncio.ensure_future(self.channel_alert(channel_id))
+        read_permit = discord.Permissions.none()
+        read_permit.read_messages = True
+        yield from self.client.edit_channel_permissions(channel, self.necrobot.server.default_role, deny=read_permit)
+        asyncio.ensure_future(self.channel_alert(channel_id))
             
-        # otherwise, change the name of the channel we got, and remove permissions from it
-        else:
-            old_match = open_match_info[1]
-            yield from self.client.edit_channel(channel, name=self.get_match_channel_name(match))
-            read_permit = discord.Permissions.none()
-            read_permit.read_messages = True
-
-            if old_match.racer_1.discord_id:
-                racer_1 = self.necrobot.find_member_with_id(old_match.racer_1.discord_id)
-                yield from self.client.delete_channel_permissions(channel, racer_1)
-
-            if old_match.racer_2.discord_id:
-                racer_2 = self.necrobot.find_member_with_id(old_match.racer_2.discord_id)
-                yield from self.client.delete_channel_permissions(channel, racer_2)
-
-            #TODO purge the channel and save the text
+##        # otherwise, change the name of the channel we got, and remove permissions from it
+##        else:
+##            old_match = open_match_info[1]
+##            yield from self.client.edit_channel(channel, name=self.get_match_channel_name(match))
+##            read_permit = discord.Permissions.none()
+##            read_permit.read_messages = True
+##
+##            if old_match.racer_1.discord_id:
+##                racer_1 = self.necrobot.find_member_with_id(old_match.racer_1.discord_id)
+##                yield from self.client.delete_channel_permissions(channel, racer_1)
+##
+##            if old_match.racer_2.discord_id:
+##                racer_2 = self.necrobot.find_member_with_id(old_match.racer_2.discord_id)
+##                yield from self.client.delete_channel_permissions(channel, racer_2)
+##
+##            #purge the channel and save the text
+##            yield from self.save_and_purge(channel)
 
         self.condordb.register_channel(match, channel.id)
 
@@ -800,8 +891,24 @@ class CondorModule(command.Module):
             yield from self.client.edit_channel_permissions(channel, role, allow=read_permit)
 
         yield from self.update_match_channel(match)
+        yield from self.send_channel_start_text(channel, match)
         return True
-    
+
+    @asyncio.coroutine
+    def save_and_delete(self, channel):
+        logs = yield from self.client.logs_from(channel, 5000)
+        messages = []
+        for message in logs:
+            messages.insert(0, message)
+
+        outfile = open('logs/{0}.log'.format(channel.name), 'w')
+        for message in messages:
+            outfile.write('{1} ({0}): {2}\n'.format(message.timestamp.strftime("%m/%d %H:%M:%S"), message.author.name, message.clean_content))
+        outfile.close()          
+
+        self.condordb.delete_channel(channel.id)
+        yield from self.client.delete_channel(channel)
+            
     # makes a new "race room" in the match channel if not already made
     @asyncio.coroutine
     def make_race_room(self, match):
@@ -816,7 +923,7 @@ class CondorModule(command.Module):
             asyncio.ensure_future(room.initialize())
 
     @asyncio.coroutine
-    def update_match_channel(self, match):        
+    def update_match_channel(self, match):
         if match.confirmed and match.time_until_alert < datetime.timedelta(seconds=1):
             yield from self.make_race_room(match)
         else:
@@ -842,6 +949,94 @@ class CondorModule(command.Module):
     def run_channel_alerts(self):
         for channel_id in self.condordb.get_all_race_channel_ids():
             asyncio.ensure_future(self.channel_alert(channel_id))
-        
+
+    @asyncio.coroutine
+    def send_channel_start_text(self, channel, match):
+        yield from self.necrobot.client.send_message(channel,
+            '\n \N{BULLET} To suggest a time, enter a command like `.suggest February 20 10:00p`. Give the time in your own local ' \
+            'timezone (which you\'ve registered using `.timezone`).\n' \
+            '\N{BULLET} Confirm a suggested time with `.confirm`. You may remove a confirmation with `.unconfirm`.\n' \
+            '\N{BULLET} To reschedule an time both racers have confirmed, both racers must call `.unconfirm`.\n' \
+            '\N{BULLET} You may alert CoNDOR staff at any time by calling `.staff`. (Please do use this command if ' \
+            'you\'re having problems -- it keeps us organized!)')
+
+        if match.racer_1 and match.racer_2 and match.racer_1.timezone and match.racer_2.timezone:
+            r1tz = pytz.timezone(match.racer_1.timezone)
+            r2tz = pytz.timezone(match.racer_2.timezone)
+
+            utcnow = pytz.utc.localize(datetime.datetime.utcnow())
+            r1off = utcnow.astimezone(r1tz).utcoffset()
+            r2off = utcnow.astimezone(r2tz).utcoffset()
+
+            if r1off > r2off:
+                ahead_racer_name = match.racer_1.twitch_name
+                behind_racer_name = match.racer_2.twitch_name
+                diff = r1off - r2off
+            elif r1off < r2off:
+                ahead_racer_name = match.racer_2.twitch_name
+                behind_racer_name = match.racer_1.twitch_name
+                diff = r2off - r1off
+            else:
+                yield from self.necrobot.client.send_message(channel,
+                    'The two racers in this match currently have the same UTC offset.')
+                return
+
+            diff_hr = int(diff.total_seconds() // 3600)
+            diff_min = int(diff.total_seconds() // 60 - diff_hr*60)
+
+            if diff_hr == 0:
+                diff_str = ''
+            elif diff_hr == 1:
+                diff_str = '1 hour'
+            else:
+                diff_str = '{} hours'.format(diff_hr)
+
+            if diff_min != 0:
+                diff_str += '{} minutes'.format(diff_min)
+
+            tzwebsite = 'http://www.spice-3d.org/time?date={0}&tz1={1}&tz2={2}'.format(utcnow.strftime('%Y-%m-%d'), match.racer_1.timezone.replace('/', '%2F'), match.racer_2.timezone.replace('/', '%2F'))
+
+            if diff_str:
+                yield from self.necrobot.client.send_message(channel,
+                    '{0} is currently {1} ahead of {2}. For a full conversion table, see {3}.'.format(ahead_racer_name, diff_str, behind_racer_name, tzwebsite))
+
+    @asyncio.coroutine
+    def update_schedule_channel(self):
+        schedule_text = '``` \n'
+        utcnow = pytz.utc.localize(datetime.datetime.utcnow())
+        max_matches = 20
+        num_matches = 0
+
+        for match in self.condordb.get_upcoming_matches(utcnow):
+            num_matches += 1
+            schedule_text += '{0} v {1}: '.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
+            if match.time - utcnow < datetime.timedelta(minutes=0):
+                schedule_text += 'Right now!'
+            else:
+                schedule_text += condortimestr.get_time_str(match.time)
+            schedule_text += '\n'
+            if num_matches >= max_matches:
+                break
             
-        
+        schedule_text += '```'
+
+        msgs = yield from self.necrobot.client.logs_from(self.necrobot.schedule_channel)
+        for msg in msgs:
+            if msg.author.name == 'condorbot' and msg.content.startswith('```'): #hack for now
+                yield from self.necrobot.client.edit_message(msg, schedule_text)
+                return
+
+        yield from self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
+            
+    @asyncio.coroutine
+    def post_match_alert(self, match):
+        cawmentator = yield from self.condorsheet.get_cawmentary(match)
+        minutes_until_match = int( (match.time_until_match.total_seconds() + 30) // 60 )
+        alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, minutes_until_match)
+        if cawmentator:
+            alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(cawmentator)
+        alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
+        alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
+        yield from self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
+            
+    
