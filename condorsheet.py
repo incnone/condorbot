@@ -213,6 +213,10 @@ class CondorSheet(object):
 
     @asyncio.coroutine
     def get_cawmentary(self, match):
+        return self._do_with_lock(self._get_cawmentary, match)
+
+    @asyncio.coroutine
+    def _get_cawmentary(self, match):
         wks = self._get_wks(match.week)
         if wks:
             match_row = self._get_row(match, wks)
