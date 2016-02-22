@@ -1,4 +1,5 @@
 import asyncio
+import codecs
 import datetime
 import discord
 
@@ -901,9 +902,16 @@ class CondorModule(command.Module):
         for message in logs:
             messages.insert(0, message)
 
-        outfile = open('logs/{0}.log'.format(channel.name), 'w')
+        outfile = codecs.open('logs/{0}.log'.format(channel.name), 'w', 'utf-8')
         for message in messages:
-            outfile.write('{1} ({0}): {2}\n'.format(message.timestamp.strftime("%m/%d %H:%M:%S"), message.author.name, message.clean_content))
+            try:
+                outfile.write('{1} ({0}): {2}\n'.format(message.timestamp.strftime("%m/%d %H:%M:%S"), message.author.name, message.clean_content))
+            except UnicodeEncodeError:
+                try:
+                    outfile.write('{1} ({0}): {2}\n'.format(message.timestamp.strftime("%m/%d %H:%M:%S"), message.author.name, message.content))
+                except UnicodeEncodeError:
+                    pass
+
         outfile.close()          
 
         self.condordb.delete_channel(channel.id)

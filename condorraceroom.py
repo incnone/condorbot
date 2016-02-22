@@ -381,6 +381,7 @@ class ForceRecordRace(command.CommandType):
                 
             self._room.condordb.record_race(self._room.match, racer_1_time, racer_2_time, winner_int, seed, int(0), False, force_recorded=True)
             yield from self._room.write('Forced record of a race.')
+            yield from self._room.update_leaderboard()
             
 class ForceNewRace(command.CommandType):
     def __init__(self, race_room):
