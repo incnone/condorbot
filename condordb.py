@@ -270,6 +270,15 @@ class CondorDB(object):
         for row in self._db_conn.execute("SELECT race_number FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? ORDER BY race_number DESC", params):
             return int(row[0])
         return 0
+
+    def finished_race_number(self, match, finished_number):
+        params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        for row in self._db_conn.execute("SELECT race_number,flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? ORDER BY race_number ASC", params):
+            if not (int(row[1]) & CondorDB.RACE_CANCELLED_FLAG):
+                finished_number -= 1
+                if finished_number == 0:
+                    return int(row[0])
+        return None
                 
     def record_match(self, match):
         num_cancelled = 0
@@ -336,7 +345,23 @@ class CondorDB(object):
             self._db_conn.commit()
         except Exception as e:
             self._db_conn.rollback()
-            print('Error in recording race.')
+            raise
+
+    def cancel_race(self, match, race_number):
+        flags = self.get_race_flags(match, race_number) | CondorDB.RACE_CANCELLED_FLAG
+        params = (0,
+                  flags,
+                  self._get_racer_id(match.racer_1),
+                  self._get_racer_id(match.racer_2),
+                  match.week,
+                  race_number,)
+
+        try:
+            self._db_conn.execute("UPDATE race_data SET winner=?, flags=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND race_number=?", params)
+            self._db_conn.commit()
+        except Exception as e:
+            self._db_conn.rollback()
+            raise
 
     def change_winner(self, match, race_number, winner_number):
         params = (winner_number,
@@ -346,6 +371,15 @@ class CondorDB(object):
                   race_number,)
         self._db_conn.execute("UPDATE race_data SET winner=? WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND race_number=?", params)
         self._db_conn.commit()
+
+    def get_race_flags(self, match, race_number):
+        params = (self._get_racer_id(match.racer_1),
+                  self._get_racer_id(match.racer_2),
+                  match.week,
+                  race_number,)
+        for row in self._db_conn.execute("SELECT flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND race_number=?", params):
+            return int(row[0])
+        return None
     
     def set_contested(self, match, race_number, contesting_user):
         R1_CONTESTED_FLAG = int(1) << 0

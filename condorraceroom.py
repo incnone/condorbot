@@ -124,9 +124,6 @@ class Cancel(command.CommandType):
 
     @asyncio.coroutine
     def _do_execute(self, command):
-        if not self._room.race or self._room.race.is_before_race:
-            return
-
         success = yield from self._room.wants_to_cancel(command.author)
         if not success:
             yield from self._room.write('{0} wishes to cancel the race. Both racers must type `.cancel` for the race to be cancelled.'.format(command.author.mention))
@@ -240,17 +237,17 @@ class Time(command.CommandType):
         else:
             yield from self._room.write('The current race time is {}.'.format(self._room.race.current_time_str))
 
-class ForceCancel(command.CommandType):
-    def __init__(self, race_room):
-        command.CommandType.__init__(self, 'forcecancel')
-        self.help_text = 'Cancels the race.'
-        self.suppress_help = True
-        self._room = race_room
-
-    @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.race and self._room.is_race_admin(command.author):
-            yield from self._room.cancel_race()
+##class ForceCancel(command.CommandType):
+##    def __init__(self, race_room):
+##        command.CommandType.__init__(self, 'forcecancel')
+##        self.help_text = 'Cancels the race.'
+##        self.suppress_help = True
+##        self._room = race_room
+##
+##    @asyncio.coroutine
+##    def _do_execute(self, command):
+##        if self._room.race and self._room.is_race_admin(command.author):
+##            yield from self._room.cancel_race()
 
 ##class ForceClose(command.CommandType):
 ##    def __init__(self, race_room):
@@ -268,7 +265,7 @@ class ForceForfeit(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forceforfeit')
         self.help_text = 'Force the given racer to forfeit the race (even if they have finished).'
-        self.suppress_help = True
+        #self.suppress_help = True
         self._room = race_room
 
     @asyncio.coroutine
@@ -387,7 +384,7 @@ class ForceNewRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcenewrace')
         self.help_text = 'Force the bot to make a new race. If there is a current race and it is not yet recorded, it will be recorded and cancelled.'
-        self.suppress_help = True
+        #self.suppress_help = True
         self._room = race_room
 
     @asyncio.coroutine
@@ -397,7 +394,32 @@ class ForceNewRace(command.CommandType):
                 yield from self._room.record_race(cancelled=True)
             yield from self._room.begin_new_race()
 
+class ForceCancelRace(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'forcecancelrace')
+        self.help_text = 'Mark a previously recorded race as cancelled. Usage is e.g., `.forcecancelrace 2`, to cancel the second uncancelled race of a match.'
+        self._room = race_room
 
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._room.is_race_admin(command.author):
+            if len(command.args) != 1:
+                yield from self._room.write('Wrong number of arguments for `.forcecancelrace`.')
+                return
+
+            try:
+                race_number = int(command.args[0])
+            except ValueError:
+                yield from self._room.write('Error: couldn\'t parse {0} as a race number.'.format(command.args[0]))
+                return
+
+            finished_number = self._room.condordb.finished_race_number(self._room.match, race_number)
+            if finished_number:
+                self._room.condordb.cancel_race(self._room.match, finished_number)
+                yield from self._room.write('Race number {0} was cancelled.'.format(race_number))
+                yield from self._room.update_leaderboard()
+            else:
+                self._room.write('I do not believe there have been {0} finished races.'.format(race_number))
 
 ##class ForceMatchDraw(command.CommandType):
 ##    def __init__(self, race_room):
@@ -462,13 +484,14 @@ class RaceRoom(command.Module):
                               #Igt(self),
                               Time(self),
                               Contest(self),
-                              ForceCancel(self),
+                              #ForceCancel(self),
                               ForceChangeWinner(self),
                               #ForceClose(self),
                               ForceForfeit(self),
                               #ForceForfeitAll(self),
                               ForceRecordRace(self),
                               ForceNewRace(self),
+                              ForceCancelRace(self),
                               #Kick(self),
                               ]
 
@@ -529,10 +552,19 @@ class RaceRoom(command.Module):
     # Cancel the race
     @asyncio.coroutine
     def cancel_race(self):
-        if self.race:
+        if self.race and not self.race.is_before_race:
+            self.cancelling_racers = []
             yield from self.race.cancel()
             yield from self.record_race(cancelled=True)
+            yield from self.write('The current race was cancelled.')
+        else:
             self.cancelling_racers = []
+            race_number = int(self._cm.condordb.largest_recorded_race_number(self.match))
+            if race_number > 0:
+                self.condordb.cancel_race(self.match, race_number)
+                yield from self.write('The previous race was cancelled.'.format(race_number))
+                yield from self.update_leaderboard()                  
+                
 
     #Updates the leaderboard
     @asyncio.coroutine
@@ -646,6 +678,7 @@ class RaceRoom(command.Module):
 
     @asyncio.coroutine
     def begin_new_race(self):
+        self.cancelling_racers = []
         self.before_races = False
         self.race = Race(self, RaceRoom.get_new_raceinfo())
         yield from self.race.initialize()

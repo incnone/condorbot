@@ -776,6 +776,7 @@ class CondorModule(command.Module):
         self.condordb = CondorDB(db_connection)
         self.condorsheet = CondorSheet(self.condordb)
         self._racerooms = []
+        self._alerted_channels = []
 
         self.command_types = [command.DefaultHelp(self),
                               Confirm(self),
@@ -942,16 +943,23 @@ class CondorModule(command.Module):
                     if int(room.channel.id) == int(channel.id):
                         print('Error: Unconfirmed match with a RaceRoom attached to it in channel #{0}.'.format(channel.name))
                         return 
-                
+
+                asyncio.ensure_future(self.channel_alert(channel.id))
                 yield from self.necrobot.client.edit_channel(channel, topic=match.topic_str)
 
     @asyncio.coroutine
     def channel_alert(self, channel_id):
+        if channel_id in self._alerted_channels:
+            return
+        self._alerted_channels.append(channel_id)
+
         match = self.condordb.get_match_from_channel_id(channel_id)
         if match and match.confirmed:
             if match.time_until_alert.total_seconds() > 0:
                 yield from asyncio.sleep(match.time_until_alert.total_seconds())
             yield from self.update_match_channel(self.condordb.get_match_from_channel_id(channel_id))
+
+        self._alerted_channels = [c for c in self._alerted_channels if c != channel_id]
 
     @asyncio.coroutine
     def run_channel_alerts(self):
