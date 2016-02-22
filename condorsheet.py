@@ -224,6 +224,8 @@ class CondorSheet(object):
                 cawmentary_column = wks.find('Cawmentary:')
                 if cawmentary_column:
                     cawmentary_cell = wks.cell(match_row, cawmentary_column.col)
+                    if not cawmentary_cell.value:
+                        return None
                     args = cawmentary_cell.value.split('/')
                     if args and args[0] == 'twitch.tv':
                         return args[len(args) - 1].rstrip(' ')
