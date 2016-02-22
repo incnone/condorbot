@@ -237,22 +237,40 @@ class CondorSheet(object):
 
     @asyncio.coroutine
     def add_cawmentary(self, match, cawmentator_twitchname):
+        return self._do_with_lock(self._add_cawmentary, match, cawmentator_twitchname)
+
+    @asyncio.coroutine
+    def _add_cawmentary(self, match, cawmentator_twitchname):
         wks = self._get_wks(match.week)
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
                 cawmentary_column = wks.find('Cawmentary:')
-                cawmentary_cell = wks.cell(match_row, cawmentary_column)
-                if cawmentary_cell.value:
-                    print('Error: tried to add cawmentary to a match that already had it.')
+                if cawmentary_column:
+                    cawmentary_cell = wks.cell(match_row, cawmentary_column.col)
+                    if cawmentary_cell.value:
+                        print('Error: tried to add cawmentary to a match that already had it.')
+                    else:
+                        wks.update_cell(match_row, cawmentary_column.col, 'twitch.tv/{}'.format(cawmentator_twitchname))
                 else:
-                    wks.update_cell(match_row, cawmentary_column, 'twitch.tv/{}'.format(cawmentator))
+                    print('Couldn\'t find the Cawmentary: column.')
+            else:
+                print('Couldn\'t find row for the match.')
 
     @asyncio.coroutine
     def remove_cawmentary(self, match):
+        return self._do_with_lock(self._remove_cawmentary, match)
+
+    @asyncio.coroutine
+    def _remove_cawmentary(self, match):
         wks = self._get_wks(match.week)
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
                 cawmentary_column = wks.find('Cawmentary:')
-                cawmentary_cell = wks.update_cell(match_row, cawmentary_column, '')
+                if cawmentary_column:
+                    cawmentary_cell = wks.update_cell(match_row, cawmentary_column.col, '')
+                else:
+                    print('Couldn\'t find the Cawmentary: column.')
+            else:
+                print('Couldn\'t find row for the match.')

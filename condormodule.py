@@ -82,23 +82,28 @@ class Cawmentate(command.CommandType):
             racer_2 = self._cm.condordb.get_from_twitch_name(command.args[1])
             match = self._cm.condordb.get_match(racer_1, racer_2)
             if not match:
-                print('Error: Couldn\'t find a match between {0} and {1}.'.format(command.args[0], command.args[1]))
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t find a match between {0} and {1}.'.format(command.args[0], command.args[1]))
                 return
 
             #check for already having a cawmentator
-            cawmentator = self._cm.condordb.get_cawmentator(match)
+            cawmentator = yield from self._cm.condorsheet.get_cawmentary(match)
             if cawmentator:
-                print('Error: Match already has cawmentator {0}.'.format(cawmentator.discord_name))
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'This match already has a cawmentator ({0}).'.format(cawmentator))
                 return
             
             #register the cawmentary in the db and also on the gsheet
             cawmentator = self._cm.condordb.get_from_discord_id(command.author.id)
             if not cawmentator:
-                print('Error: User {0} unregistered. (Use `.stream`.)'.format(command.author.name))
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    '{0}: You need to register a twitch stream before you can be assigned cawmentary. (Use `.stream`.)'.format(command.author.mention))
                 return
             
             self._cm.condordb.add_cawmentary(match, cawmentator.discord_id)
-            self._cm.condorsheet.add_cawmentary(match, cawmentator.twitch_name)
+            yield from self._cm.condorsheet.add_cawmentary(match, cawmentator.twitch_name)
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Added {0} as cawmentary for the match {1}-{2}.'.format(command.author.mention, racer_1.twitch_name, racer_2.twitch_name))
 
 class Confirm(command.CommandType):
     def __init__(self, condor_module):
@@ -436,25 +441,42 @@ class Uncawmentate(command.CommandType):
     @asyncio.coroutine
     def _do_execute(self, command):
         if len(command.args) != 2:
-            print('Error in uncawmentate: wrong command arg length.')
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                '{0}: Wrong arg length for `.uncawmentate` (please specify the twitch names of the racers in the match).'.format(command.author))
         else:
             #find the match
             racer_1 = self._cm.condordb.get_from_twitch_name(command.args[0])
             racer_2 = self._cm.condordb.get_from_twitch_name(command.args[1])
             match = self._cm.condordb.get_match(racer_1, racer_2)
             if not match:
-                print('Error: Couldn\'t find a match between {0} and {1}.'.format(command.args[0], command.args[1]))
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: Couldn\'t find a match between {0} and {1}.'.format(command.args[0], command.args[1]))
+                return
+
+            #find the cawmentator
+            cawmentator = self._cm.condordb.get_from_discord_id(command.author.id)
+            if not cawmentator:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    '{0}: You need to register a twitch stream before you can be assigned cawmentary. (Use `.stream`.)'.format(command.author.mention))
                 return
 
             #check for already having a cawmentator
-            cawmentator = self._cm.condordb.get_cawmentator(match)
-            if cawmentator.discord_id != command.author.id:
-                print('Error: Match has cawmentator {0}.'.format(cawmentator.discord_name))
+            match_cawmentator = yield from self._cm.condorsheet.get_cawmentary(match)
+            if not match_cawmentator:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    '{0}: This match has no cawmentator.'.format(command.author.mention, match_cawmentator))
+                return
+            
+            if match_cawmentator.lower() != cawmentator.twitch_name.lower():
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    '{0}: This match is being cawmentated by {1}.'.format(command.author.mention, match_cawmentator))
                 return
             
             #register the cawmentary in the db and also on the gsheet           
             self._cm.condordb.remove_cawmentary(match)
-            self._cm.condorsheet.remove_cawmentary(match)
+            yield from self._cm.condorsheet.remove_cawmentary(match)
+            yield from self._cm.necrobot.client.send_message(command.channel,
+                'Removed {0} as cawmentary for the match {1}-{2}.'.format(command.author.mention, racer_1.twitch_name, racer_2.twitch_name))
 
 
 class Unconfirm(command.CommandType):
@@ -779,6 +801,8 @@ class CondorModule(command.Module):
         self._alerted_channels = []
 
         self.command_types = [command.DefaultHelp(self),
+                              Cawmentate(self),
+                              Uncawmentate(self),
                               Confirm(self),
                               CloseWeek(self),
                               MakeWeek(self),

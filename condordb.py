@@ -172,21 +172,31 @@ class CondorDB(object):
     ## Gets the most recent match if no week given
     def get_match(self, racer_1, racer_2, week_number=None):
         if week_number == None:
-            params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2),)
-            for row in self._db_conn.execute("SELECT week_number,timestamp,flags FROM match_data WHERE racer_1_id=? AND racer_2_id=? ORDER BY week_number DESC", params):
-                match = CondorMatch(racer_1, racer_2, row[0])
-                if row[1]:
-                    match.set_from_timestamp(int(row[1]))
-                match.flags = int(row[2])
-                return match
+            params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), self._get_racer_id(racer_2), self._get_racer_id(racer_1),)
+            for row in self._db_conn.execute("SELECT week_number FROM match_data WHERE (racer_1_id=? AND racer_2_id=?) OR (racer_1_id=? AND racer_2_id=?) ORDER BY week_number DESC", params):
+                try:
+                    week_number = int(row[0])
+                except ValueError:
+                    print('ValueError in parsing week number {}.'.format(row[0]))
+                    return None
+
+                return self.get_match(racer_1, racer_2, week_number)
         else:
-            params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number)
-            for row in self._db_conn.execute("SELECT timestamp,flags FROM match_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
-                match = CondorMatch(racer_1, racer_2, week_number)
-                if row[0]:
-                    match.set_from_timestamp(int(row[0]))
-                match.flags = int(row[1])
-                return match            
+            match_try = self._get_match(racer_1, racer_2, week_number)
+            if match_try:
+                return match_try
+            else:
+                return self._get_match(racer_2, racer_1, week_number)          
+        return None
+
+    def _get_match(self, racer_1, racer_2, week_number):
+        params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number)
+        for row in self._db_conn.execute("SELECT timestamp,flags FROM match_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
+            match = CondorMatch(racer_1, racer_2, week_number)
+            if row[0]:
+                match.set_from_timestamp(int(row[0]))
+            match.flags = int(row[1])
+            return match
         return None
 
     def get_match_from_channel_id(self, channel_id):
