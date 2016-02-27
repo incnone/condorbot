@@ -137,6 +137,7 @@ class Confirm(command.CommandType):
         if match.is_confirmed_by(racer):
             yield from self._cm.necrobot.client.send_message(command.channel,
                 '{0}: You\'ve already confirmed this time.'.format(command.author.mention))
+            yield from self._cm.update_match_channel(match)
             return              
 
         match.confirm(racer)
@@ -255,7 +256,7 @@ class Staff(command.CommandType):
         yield from self._cm.necrobot.client.send_message(self._cm.necrobot.notifications_channel,
             'Alert: `.staff` called by {0} in channel {1}.'.format(command.author.mention, command.channel.mention))
         yield from self._cm.necrobot.client.send_message(command.channel,
-            '{0}: CoNDOR Staff has been alerted.'.format(command.author.mention))
+            '{0}: Alerting CoNDOR Staff: {1}.'.format(command.author.mention, self._cm.necrobot.condor_staff))
 
 class Stream(command.CommandType):
     def __init__(self, condor_module):
@@ -538,7 +539,7 @@ class UserInfo(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel.is_private or channel == self._cm.necrobot.main_channel or self._cm.condordb.is_registered_channel(channel.id)
+        return True
 
     @asyncio.coroutine
     def _do_execute(self, command):
@@ -1047,9 +1048,16 @@ class CondorModule(command.Module):
         max_matches = 20
         num_matches = 0
 
+        upcoming_matches = self.condordb.get_upcoming_matches(utcnow)
+        max_r1_len = 0
+        max_r2_len = 0
+        for match in upcoming_matches:
+            max_r1_len = max(max_r1_len, len(match.racer_1.twitch_name))
+            max_r2_len = max(max_r2_len, len(match.racer_2.twitch_name))
+
         for match in self.condordb.get_upcoming_matches(utcnow):
             num_matches += 1
-            schedule_text += '{0} v {1}: '.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
+            schedule_text += '{r1:>{w1}} v {r2:<{w2}} : '.format(r1=match.racer_1.twitch_name, w1=max_r1_len, r2=match.racer_2.twitch_name, w2=max_r2_len)
             if match.time - utcnow < datetime.timedelta(minutes=0):
                 schedule_text += 'Right now!'
             else:
