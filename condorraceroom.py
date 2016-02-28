@@ -702,7 +702,8 @@ class RaceRoom(command.Module):
         elif race_number == int(3):
             race_str = 'third'
             
-        yield from self.write('Please type `.ready` when you are ready for the {0} race. When both racers `.ready`, the race will begin.'.format(race_str))
+        yield from self.write('Please input the seed ({1}) and type `.ready` when you are ready for the {0} race. '\
+                              'When both racers `.ready`, the race will begin.'.format(race_str, self.race.race_info.seed))
 
     # Returns true if all racers are ready
     @property
