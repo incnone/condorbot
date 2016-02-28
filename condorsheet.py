@@ -185,15 +185,17 @@ class CondorSheet(object):
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
-                winner = 'Draw'
+                winner = ''
                 if match_results[0] > match_results[1]:
                     winner = match.racer_1.twitch_name
                 elif match_results[0] < match_results[1]:
                     winner = match.racer_2.twitch_name
 
-                score_list = [match_results[0], match_results[1]]
+                score_list = [match_results[0] + (0.5)*match_results[2], match_results[1] + (0.5)*match_results[2]]
                 score_list = list(sorted(score_list, reverse=True))
-                score_str = '=("{0}-{1}")'.format(score_list[0], score_list[1])
+                high_score = str(round(score_list[0],1) if score_list[0] % 1 else int(score_list[0]))
+                low_score = str(round(score_list[1],1) if score_list[1] % 1 else int(score_list[1]))
+                score_str = '=("{0}-{1}")'.format(high_score, low_score)
                 
                 winner_column = wks.find('Winner:')
                 if winner_column:

@@ -379,6 +379,9 @@ class ForceRecordRace(command.CommandType):
             self._room.condordb.record_race(self._room.match, racer_1_time, racer_2_time, winner_int, seed, int(0), False, force_recorded=True)
             yield from self._room.write('Forced record of a race.')
             yield from self._room.update_leaderboard()
+
+            if self._room.played_all_races:
+                yield from self._room.record_match()
             
 class ForceNewRace(command.CommandType):
     def __init__(self, race_room):
@@ -576,8 +579,8 @@ class RaceRoom(command.Module):
             for racer in self.match.racers:
                 max_name_len = max(max_name_len, len(racer.discord_name))
             for racer in self.match.racers:
-                wins = self._cm.condordb.number_of_wins(self.match, racer)
-                topic += '     ' + racer.discord_name + (' ' * (max_name_len - len(racer.discord_name))) + ' --- Wins: {0}\n'.format(wins)
+                wins = self._cm.condordb.number_of_wins(self.match, racer, count_draws=True)
+                topic += '     ' + racer.discord_name + (' ' * (max_name_len - len(racer.discord_name))) + ' --- Wins: {0}\n'.format(str(round(wins,1) if wins % 1 else int(wins)))
 
             race_number = self._cm.condordb.number_of_finished_races(self.match) + 1
             if race_number > config.RACE_NUMBER_OF_RACES:
@@ -644,31 +647,36 @@ class RaceRoom(command.Module):
 
             if time_until_match > pm_warning:
                 yield from asyncio.sleep( (time_until_match - pm_warning).total_seconds() )
-                yield from self.alert_racers(send_pm=True)                
+                if not self.race:
+                    yield from self.alert_racers(send_pm=True)                
 
             time_until_match = self.match.time_until_match            
             if time_until_match > first_warning:
                 yield from asyncio.sleep( (time_until_match - first_warning).total_seconds() )
-                yield from self.alert_racers()
+                if not self.race:
+                    yield from self.alert_racers()
 
             time_until_match = self.match.time_until_match
             if time_until_match > alert_staff_warning:
                 yield from asyncio.sleep( (time_until_match - alert_staff_warning).total_seconds() )
 
             # this is done at the alert_staff_warning, unless this function was called after the alert_staff_warning, in which case do it immediately
-            yield from self.alert_racers()            
-            for racer in self.match.racers:
-                if racer not in self.entered_racers:
-                    discord_name = ''
-                    if racer.discord_name:
-                        discord_name = ' (Discord name: {0})'.format(racer.discord_name)
-                    minutes_until_race = int( (self.match.time_until_match.total_seconds() + 30) // 60)
-                    yield from self.alert_staff('Alert: {0}{1} has not yet shown up for their match, which is scheduled in {2} minutes.'.format(racer.twitch_name, discord_name, minutes_until_race))
+            if not self.race:
+                yield from self.alert_racers()            
+                for racer in self.match.racers:
+                    if racer not in self.entered_racers:
+                        discord_name = ''
+                        if racer.discord_name:
+                            discord_name = ' (Discord name: {0})'.format(racer.discord_name)
+                        minutes_until_race = int( (self.match.time_until_match.total_seconds() + 30) // 60)
+                        yield from self.alert_staff('Alert: {0}{1} has not yet shown up for their match, which is scheduled in {2} minutes.'.format(racer.twitch_name, discord_name, minutes_until_race))
 
-            yield from self._cm.post_match_alert(self.match)
+                yield from self._cm.post_match_alert(self.match)
 
             yield from asyncio.sleep(self.match.time_until_match.total_seconds())
-            yield from self.begin_new_race()
+
+            if not self.race:
+                yield from self.begin_new_race()
 
     @asyncio.coroutine
     def constantly_update_leaderboard(self):
@@ -787,7 +795,16 @@ class RaceRoom(command.Module):
                         self.match.racer_2.twitch_name, racetime.to_str(racer_2_time)))
 
             self._cm.condordb.record_race(self.match, racer_1_time, racer_2_time, winner, self.race.race_info.seed, self.race.start_time.timestamp(), cancelled)
-            write_str = 'Race recorded.' if not cancelled else 'Race cancelled.'
+
+            if not cancelled:
+                racer_1_member = self.necrobot.find_member_with_id(self.match.racer_1.discord_id)
+                racer_2_member = self.necrobot.find_member_with_id(self.match.racer_2.discord_id)
+                racer_1_mention = racer_1_member.mention if racer_1_member else ''
+                racer_2_mention = racer_2_member.mention if racer_2_member else ''
+                write_str = '{0}, {1}: The race is over, and has been recorded.'.format(racer_1_mention, racer_2_mention)
+            else:
+                write_str = 'Race cancelled.'
+                
             yield from self.write(write_str)
             yield from self.write('If you wish to contest the previous race\'s result, use the `.contest` command. This marks the race as contested; CoNDOR Staff will be alerted, and will '
                                   'look into your race.')

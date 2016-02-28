@@ -849,7 +849,8 @@ class CondorModule(command.Module):
                 yield from room.execute(command)
 
     def get_match_channel_name(self, match):
-        return '{0}-{1}'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
+        racer_name_list = sorted([match.racer_1.twitch_name, match.racer_2.twitch_name])
+        return '{0}-{1}'.format(racer_name_list[0], racer_name_list[1])
 
     @asyncio.coroutine
     def make_match_channel(self, match):

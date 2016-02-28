@@ -262,7 +262,7 @@ class CondorDB(object):
                 num_finished += 1
         return num_finished
 
-    def number_of_wins(self, match, racer):
+    def number_of_wins(self, match, racer, count_draws=False):
         num_wins = 0
         racer_id = self._get_racer_id(racer)
         racer_number = match.racer_number(racer)
@@ -270,6 +270,11 @@ class CondorDB(object):
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week, racer_number) 
             for row in self._db_conn.execute("SELECT flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND winner=?", params):
                 num_wins += 1
+
+            if count_draws:
+                params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week, 0) 
+                for row in self._db_conn.execute("SELECT flags FROM race_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=? AND winner=?", params):
+                    num_wins += 0.5
         else:
             print('Error: called CondorDB.number_of_wins on a racer not in a match (racer {0}, match {1} v {2}).'.format(racer.twitch_name, match.racer_1.twitch_name, match.racer_2.twitch_name))
 
