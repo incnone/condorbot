@@ -424,6 +424,17 @@ class ForceCancelRace(command.CommandType):
             else:
                 self._room.write('I do not believe there have been {0} finished races.'.format(race_number))
 
+class ForceRecordMatch(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'forcerecordmatch')
+        self.help_text = 'Update the current match in the database and the gsheet.'
+        self._room = race_room
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._room.is_race_admin(command.author):
+            yield from self._room.record_match()
+
 ##class ForceMatchDraw(command.CommandType):
 ##    def __init__(self, race_room):
 ##        command.CommandType.__init__(self, 'forcematchdraw')
@@ -495,6 +506,7 @@ class RaceRoom(command.Module):
                               ForceRecordRace(self),
                               ForceNewRace(self),
                               ForceCancelRace(self),
+                              ForceRecordMatch(self),
                               #Kick(self),
                               ]
 
