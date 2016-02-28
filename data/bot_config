@@ -1,5 +1,5 @@
 bot_command_prefix=.
-bot_version=0.4.1
+bot_version=0.4.2
 
 year=2016
 
@@ -19,5 +19,5 @@ race_notify_if_times_within_seconds=5
 
 db_filename=data/condors4.db
 gsheet_credentials_filename=data/gsheet_credentials.json
-gsheet_doc_name=CoNDOR Season 4 Test
+gsheet_doc_name=CoNDOR Season 4 Matchup Chart
 gsheet_timezone=US/Eastern
