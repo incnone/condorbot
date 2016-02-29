@@ -195,7 +195,7 @@ class MakeWeek(command.CommandType):
                 try:
                     matches = yield from self._cm.condorsheet.get_matches(week)
                     if matches:
-                        matches = sorted(matches, key=lambda m: m.racer_1.twitch_name.lower())
+                        matches = sorted(matches, key=lambda m: m.channel_name)
                         for match in matches:
                             success = yield from self._cm.make_match_channel(match)
                             if success:
@@ -849,8 +849,7 @@ class CondorModule(command.Module):
                 yield from room.execute(command)
 
     def get_match_channel_name(self, match):
-        racer_name_list = sorted([match.racer_1.twitch_name, match.racer_2.twitch_name])
-        return '{0}-{1}'.format(racer_name_list[0], racer_name_list[1])
+        return match.channel_name
 
     @asyncio.coroutine
     def make_match_channel(self, match):

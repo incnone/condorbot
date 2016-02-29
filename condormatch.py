@@ -69,6 +69,13 @@ class CondorMatch(object):
         self.flags = 0
 
     @property
+    def channel_name(self):
+        name_1 = self.racer_1.twitch_name.lower()
+        name_2 = self.racer_2.twitch_name.lower()
+        racer_name_list = sorted([name_1, name_2])
+        return '{0}-{1}'.format(racer_name_list[0], racer_name_list[1])
+
+    @property
     def racers(self):
         return [self.racer_1, self.racer_2]
 
