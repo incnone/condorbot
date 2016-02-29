@@ -825,6 +825,7 @@ class CondorModule(command.Module):
     def initialize(self):
         yield from self.run_channel_alerts()
         yield from self.update_schedule_channel()
+        asyncio.ensure_future(self.schedule_channel_auto_updater())
 
     @property
     def infostr(self):
@@ -1042,8 +1043,21 @@ class CondorModule(command.Module):
                     '{0} is currently {1} ahead of {2}. For a full conversion table, see {3}.'.format(ahead_racer_name, diff_str, behind_racer_name, tzwebsite))
 
     @asyncio.coroutine
+    def schedule_channel_auto_updater(self):
+        while True:
+            utcnow = pytz.utc.localize(datetime.datetime.utcnow())
+            first_next_try = utcnow.replace(minute=0,second=0,microsecond=0) + datetime.timedelta(minutes=45)
+            time_until = first_next_try - utcnow
+            if time_until <= datetime.timedelta(seconds=0):
+                time_until += datetime.timedelta(minutes=30)
+
+            yield from asyncio.sleep(time_until.total_seconds())
+            yield from self.update_schedule_channel()
+            yield from asyncio.sleep(60)
+
+    @asyncio.coroutine
     def update_schedule_channel(self):
-        schedule_text = '``` \n'
+        schedule_text = '``` \nUpcoming matches: \n'
         utcnow = pytz.utc.localize(datetime.datetime.utcnow())
         max_matches = 20
         num_matches = 0
