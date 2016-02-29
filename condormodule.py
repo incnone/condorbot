@@ -700,7 +700,7 @@ class ForceRescheduleUTC(command.CommandType):
                         '{0}: Error: The time you are suggesting for the match appears to be in the past.'.format(command.author.mention))
                     return                
 
-                match.schedule(utc_dt, None, unconfirm=True)
+                match.schedule(utc_dt, None)
 
                 #update the db
                 self._cm.condordb.update_match(match)
@@ -753,7 +753,40 @@ class ForceUpdate(command.CommandType):
                 
             yield from self._cm.update_match_channel(match)
             yield from self._cm.update_schedule_channel()
-            yield from self._cm.necrobot.client.send_message(command.channel, 'Updated.')                
+            yield from self._cm.necrobot.client.send_message(command.channel, 'Updated.')
+
+class ForceUnschedule(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'forceunschedule')
+        self.help_text = 'Forces the match to be unscheduled.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._cm.necrobot.is_admin(command.author):
+            match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+            if not match:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: This match wasn\'t found in the database. Please contact CoNDOR Staff.')
+                return
+
+            for racer in match.racers:
+                match.unconfirm(racer)
+
+            self._cm.condordb.update_match(match)
+
+            if match.confirmed:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Failed to unconfirm match.')
+            else:
+                yield from self._cm.condorsheet.unschedule_match(match)
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'The match has been unscheduled. Please `.suggest` a new time when one has been agreed upon.')
+
+            yield from self._cm.update_match_channel(match)    
 
 class ForceTransferAccount(command.CommandType):
     def __init__(self, condor_module):
@@ -817,6 +850,7 @@ class CondorModule(command.Module):
                               ForceBeginMatch(self),
                               ForceConfirm(self),
                               ForceRescheduleUTC(self),
+                              ForceUnschedule(self),
                               ForceUpdate(self),
                               ForceTransferAccount(self),
                               ]

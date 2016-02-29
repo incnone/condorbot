@@ -202,7 +202,7 @@ class CondorMatch(object):
         else:
             return False
 
-    def schedule(self, time, racer, unconfirm=False):
+    def schedule(self, time, racer, unconfirm=True):
         self.flags = self.flags | CondorMatch.FLAG_SCHEDULED
         if racer and racer.twitch_name == self.racer_1.twitch_name:
             self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1) & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R2)) 
@@ -214,8 +214,7 @@ class CondorMatch(object):
         else:
             self._time = pytz.utc.localize(time)
 
-        if unconfirm:
-            self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1) & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
+        self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1) & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
 
     def confirm(self, racer):
         if racer.twitch_name == self.racer_1.twitch_name:

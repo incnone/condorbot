@@ -5,3 +5,4 @@ data/login_info
 discord.log
 data/official_login_info
 *.log
+data/bot_config_fake
