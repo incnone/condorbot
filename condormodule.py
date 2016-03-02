@@ -370,7 +370,13 @@ class Suggest(command.CommandType):
             time_min = schedule_args[2]
             time_hr = schedule_args[3]            
 
-            utc_dt = racer.local_to_utc(datetime.datetime(config.SEASON_YEAR, month, day, time_hr, time_min, 0))
+            try:
+                utc_dt = racer.local_to_utc(datetime.datetime(config.SEASON_YEAR, month, day, time_hr, time_min, 0))
+            except ValueError as e:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error parsing your date: {0}.'.format(str(e)))
+                return
+                
             if not utc_dt:
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Error: {0}: I have your timezone stored as "{1}", but I can\'t parse this as a timezone. ' \
@@ -1126,7 +1132,7 @@ class CondorModule(command.Module):
             if match.time - utcnow < datetime.timedelta(minutes=0):
                 schedule_text += 'Right now!'
             else:
-                schedule_text += condortimestr.get_time_str(match.time)
+                schedule_text += condortimestr.get_24h_time_str(match.time)
             schedule_text += '\n'
             if num_matches >= max_matches:
                 break
