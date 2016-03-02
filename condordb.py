@@ -199,6 +199,12 @@ class CondorDB(object):
             return match
         return None
 
+    def get_channel_id_from_match(self, match):
+        params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+        for row in self._db_conn.execute("SELECT channel_id FROM channel_data WHERE racer_1_id=? AND racer_2_id=? AND week_number=?", params):
+            return int(row[0])
+        return None
+
     def get_match_from_channel_id(self, channel_id):
         params = (channel_id,)
         for row in self._db_conn.execute("SELECT racer_1_id,racer_2_id,week_number FROM channel_data WHERE channel_id=?", params):
@@ -209,6 +215,14 @@ class CondorDB(object):
                 return None
             return self.get_match(racer_1, racer_2, int(row[2]))
         return None
+
+    def get_all_matches(self):
+        match_list = []
+        for row in self._db_conn.execute("SELECT channel_id FROM channel_data"):
+            match = self.get_match_from_channel_id(int(row[0]))
+            if match:
+                match_list.append(match)
+        return match_list
             
     def update_match(self, match):
         params = (match.timestamp, match.flags, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)

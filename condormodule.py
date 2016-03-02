@@ -588,37 +588,15 @@ class Remind(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return self._cm.condordb.is_registered_channel(channel.id)
+        return channel == self._cm.admin_channel
 
     @asyncio.coroutine
     def _do_execute(self, command):
         if self._cm.necrobot.is_admin(command.author):
-            match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
-            if not match:
-                yield from self._cm.necrobot.client.send_message(command.channel,
-                    'Error: This match wasn\'t found in the database.')
-                return            
-            else:
-                mention_str = ''
-                for racer in match.racers:
-                    racer_member = self._cm.necrobot.find_member_with_id(racer.discord_id)
-                    if racer_member:
-                        mention_str += racer_member.mention + ', '
-                if mention_str:
-                    mention_str = mention_str[:-2]
-                else:
-                    yield from self._cm.necrobot.client.send_message(command.channel,
-                        'Error: couldn\'t find discord user accounts for the racers in this match.')
-                    return
-
-                content = command.content
-                if content:
-                    yield from self._cm.necrobot.client.send_message(command.channel,
-                        '{0}: {1}'.format(mention_str, content))
-                else:
-                    yield from self._cm.necrobot.client.send_message(command.channel,
-                        'Reminding {0}.'.format(mention_str))                                                                            
-
+            if command.channel == self._cm.admin_channel:
+                text = command.content if command.content else None
+                yield from self._cm.remind_all(text, lambda m: not m.confirmed)
+                                                                       
 class ForceBeginMatch(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forcebeginmatch')
@@ -642,7 +620,7 @@ class ForceBeginMatch(command.CommandType):
                     match.confirm(racer)                
                 self._cm.condordb.update_match(match)
 
-                yield from self._cm.make_race_room(match)
+                yield from self._cm.make_race_room(match, lambda m: not m.scheduled)
             
 class ForceConfirm(command.CommandType):
     def __init__(self, condor_module):
@@ -1173,5 +1151,40 @@ class CondorModule(command.Module):
         alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         yield from self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
+
+    @asyncio.coroutine
+    def remind_all(self, text=None, condition=lambda m: True):
+        match_list = self.condordb.get_all_matches()
+        for match in match_list:
+            if condition(match):
+                yield from self._remind_match(match, text)
             
-    
+    @asyncio.coroutine
+    def _remind_match(self, match, text=None):
+        channel_id = self.condordb.get_channel_id_from_match(match)
+        if not channel_id:
+            print('Error: match {0} not found in database.'.format(match.channel_name))
+            return            
+        else:
+            channel = self.necrobot.find_channel_with_id(channel_id)
+            if not channel:
+                print('Error: Channel not found for match {0}, which has a registered channel id.'.format(match.channel_name))
+                return
+            
+            mention_str = ''
+            for racer in match.racers:
+                racer_member = self.necrobot.find_member_with_id(racer.discord_id)
+                if racer_member:
+                    mention_str += racer_member.mention + ', '
+            if mention_str:
+                mention_str = mention_str[:-2]
+            else:
+                print('Error: couldn\'t find discord user accounts for the racers in match {0}.'.format(match.channel_name))
+                return
+
+            if text:
+                yield from self.necrobot.client.send_message(channel,
+                    '{0}: {1}'.format(mention_str, content))
+            else:
+                yield from self.necrobot.client.send_message(channel,
+                    '{0}: Please remember to schedule your races!'.format(mention_str))     
