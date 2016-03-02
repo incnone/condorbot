@@ -612,7 +612,7 @@ class CloseAllRaceChannels(command.CommandType):
 class Remind(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'remind')
-        self.help_text = 'Sends an @mention to both racers. .remind <text> appends the supplied text.'
+        self.help_text = 'Sends "@racer_1, @racer_2: Please remember to schedule your races!" to all racers in unscheduled matches. `.remind` <text> instead sends "@racer_1, @racer_2: <text>".'
         self._cm = condor_module
 
     def recognized_channel(self, channel):

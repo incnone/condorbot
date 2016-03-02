@@ -1,6 +1,6 @@
 # Condorbot Documentation (for CoNDOR Season 4)
 
-Version: 0.2
+Version: 0.4.5
 
 ## Registering
 

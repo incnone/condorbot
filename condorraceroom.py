@@ -237,17 +237,17 @@ class Time(command.CommandType):
         else:
             yield from self._room.write('The current race time is {}.'.format(self._room.race.current_time_str))
 
-##class ForceCancel(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'forcecancel')
-##        self.help_text = 'Cancels the race.'
-##        self.suppress_help = True
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if self._room.race and self._room.is_race_admin(command.author):
-##            yield from self._room.cancel_race()
+class ForceCancel(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'forcecancel')
+        self.help_text = 'Cancels the race.'
+        self.suppress_help = True
+        self._room = race_room
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._room.race and self._room.is_race_admin(command.author):
+            yield from self._room.cancel_race()
 
 ##class ForceClose(command.CommandType):
 ##    def __init__(self, race_room):
@@ -498,7 +498,7 @@ class RaceRoom(command.Module):
                               #Igt(self),
                               Time(self),
                               Contest(self),
-                              #ForceCancel(self),
+                              ForceCancel(self),
                               ForceChangeWinner(self),
                               #ForceClose(self),
                               ForceForfeit(self),
