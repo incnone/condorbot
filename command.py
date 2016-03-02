@@ -37,6 +37,11 @@ class Command(object):
     def is_private(self):
         return self.message.channel.is_private if self.message else None
 
+    @property
+    def content(self):
+        cmd_len = len(config.BOT_COMMAND_PREFIX) + len(self.command) + 1
+        return self.message.content[cmd_len:]
+
 # Abstract base class; a particular command that the bot can interpret, and how to interpret it
 # (For instance, racemodule has a CommandType object called make, for the `.make` command.)
 class CommandType(object):

@@ -581,6 +581,44 @@ class CloseAllRaceChannels(command.CommandType):
             self._cm.condordb.delete_channel(channel.id)
             yield from self._cm.necrobot.client.delete_channel(channel)
 
+class Remind(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'remind')
+        self.help_text = 'Sends an @mention to both racers. .remind <text> appends the supplied text.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._cm.necrobot.is_admin(command.author):
+            match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+            if not match:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: This match wasn\'t found in the database.')
+                return            
+            else:
+                mention_str = ''
+                for racer in match.racers:
+                    racer_member = self._cm.necrobot.find_member_with_id(racer.discord_id)
+                    if racer_member:
+                        mention_str += racer_member.mention + ', '
+                if mention_str:
+                    mention_str = mention_str[:-2]
+                else:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        'Error: couldn\'t find discord user accounts for the racers in this match.')
+                    return
+
+                content = command.content
+                if content:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        '{0}: {1}'.format(mention_str, content))
+                else:
+                    yield from self._cm.necrobot.client.send_message(command.channel,
+                        'Reminding {0}.'.format(mention_str))                                                                            
+
 class ForceBeginMatch(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forcebeginmatch')
@@ -847,6 +885,7 @@ class CondorModule(command.Module):
                               Unconfirm(self),
                               UserInfo(self),
                               #CloseAllRaceChannels(self),
+                              Remind(self),
                               ForceBeginMatch(self),
                               ForceConfirm(self),
                               ForceRescheduleUTC(self),
