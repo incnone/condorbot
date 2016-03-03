@@ -395,7 +395,8 @@ class ForceNewRace(command.CommandType):
         if self._room.is_race_admin(command.author):
             if self._room.race and not self._room.recorded_race:
                 yield from self._room.record_race(cancelled=True)
-            yield from self._room.begin_new_race()
+            else:
+                yield from self._room.begin_new_race()
 
 class ForceCancelRace(command.CommandType):
     def __init__(self, race_room):

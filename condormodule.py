@@ -1049,11 +1049,13 @@ class CondorModule(command.Module):
         else:
             channel = self.necrobot.find_channel_with_id(self.condordb.find_match_channel_id(match))
             if channel:
-                #if we have a RaceRoom attached to this channel, return; print an error, since this shouldn't be happening
+                #if we have a RaceRoom attached to this channel, remove it
+                delete_raceroom_id = None
                 for room in self._racerooms:
                     if int(room.channel.id) == int(channel.id):
-                        print('Error: Unconfirmed match with a RaceRoom attached to it in channel #{0}.'.format(channel.name))
-                        return 
+                        delete_raceroom_id = int(channel.id)
+                if delete_raceroom_id:
+                    self._racerooms = [r for r in self._racerooms if not (int(r.channel.id) == delete_raceroom_id)]
 
                 asyncio.ensure_future(self.channel_alert(channel.id))
                 yield from self.necrobot.client.edit_channel(channel, topic=match.topic_str)
