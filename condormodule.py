@@ -18,6 +18,12 @@ from condormatch import CondorRacer
 from condorraceroom import RaceRoom
 from condorsheet import CondorSheet
 
+def _escaped(discord_str):
+    escaped_str = discord_str
+    for char in ['*', '~', '_']:
+        escaped_str = escaped_str.replace(char, '\\' + char)
+    return escaped_str
+
 def parse_schedule_args(command):
     if not len(command.args) == 3:
         return None
@@ -125,7 +131,7 @@ class Cawmentate(command.CommandType):
             self._cm.condordb.add_cawmentary(match, cawmentator.discord_id)
             yield from self._cm.condorsheet.add_cawmentary(match, cawmentator.twitch_name)
             yield from self._cm.necrobot.client.send_message(command.channel,
-                'Added {0} as cawmentary for the match {1}-{2}.'.format(command.author.mention, racer_1.twitch_name, racer_2.twitch_name))
+                'Added {0} as cawmentary for the match {1}-{2}.'.format(command.author.mention, racer_1.escaped_twitch_name, racer_2.escaped_twitch_name))
 
 class Confirm(command.CommandType):
     def __init__(self, condor_module):
@@ -306,10 +312,10 @@ class Stream(command.CommandType):
                 success = self._cm.condordb.register_racer(racer)
                 if not success:
                     yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: unable to register your stream as <twitch.tv/{1}>, because that ' \
-                                                                     'stream is already registered to a different account.'.format(command.author.mention, twitch_name))                    
+                                                                     'stream is already registered to a different account.'.format(command.author.mention, _escaped(twitch_name)))                    
                     return
                 
-                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Registered your stream as <twitch.tv/{1}>'.format(command.author.mention, twitch_name))
+                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Registered your stream as <twitch.tv/{1}>'.format(command.author.mention, _escaped(twitch_name)))
 
                 #look for race channels with this racer, and unhide them if we find any
                 channel_ids = self._cm.condordb.find_channel_ids_with(racer)
@@ -505,7 +511,7 @@ class Uncawmentate(command.CommandType):
             self._cm.condordb.remove_cawmentary(match)
             yield from self._cm.condorsheet.remove_cawmentary(match)
             yield from self._cm.necrobot.client.send_message(command.channel,
-                'Removed {0} as cawmentary for the match {1}-{2}.'.format(command.author.mention, racer_1.twitch_name, racer_2.twitch_name))
+                'Removed {0} as cawmentary for the match {1}-{2}.'.format(command.author.mention, racer_1.escaped_twitch_name, racer_2.escaped_twitch_name))
 
 
 class Unconfirm(command.CommandType):
@@ -868,7 +874,7 @@ class ForceTransferAccount(command.CommandType):
                 return
 
             self._cm.condordb.transfer_racer_to(from_racer.twitch_name, to_member)
-            yield from self._cm.client.send_message(command.channel, '{0}: Transfered racer account {1} to member {2}.'.format(command.author.mention, from_racer.twitch_name, to_member.mention))
+            yield from self._cm.client.send_message(command.channel, '{0}: Transfered racer account {1} to member {2}.'.format(command.author.mention, from_racer.escaped_twitch_name, to_member.mention))
 
 class CondorModule(command.Module):
     def __init__(self, necrobot, db_connection):
@@ -1090,12 +1096,12 @@ class CondorModule(command.Module):
             r2off = utcnow.astimezone(r2tz).utcoffset()
 
             if r1off > r2off:
-                ahead_racer_name = match.racer_1.twitch_name
-                behind_racer_name = match.racer_2.twitch_name
+                ahead_racer_name = match.racer_1.escaped_twitch_name
+                behind_racer_name = match.racer_2.escaped_twitch_name
                 diff = r1off - r2off
             elif r1off < r2off:
-                ahead_racer_name = match.racer_2.twitch_name
-                behind_racer_name = match.racer_1.twitch_name
+                ahead_racer_name = match.racer_2.escaped_twitch_name
+                behind_racer_name = match.racer_1.escaped_twitch_name
                 diff = r2off - r1off
             else:
                 yield from self.necrobot.client.send_message(channel,
@@ -1173,11 +1179,11 @@ class CondorModule(command.Module):
     def post_match_alert(self, match):
         cawmentator = yield from self.condorsheet.get_cawmentary(match)
         minutes_until_match = int( (match.time_until_match.total_seconds() + 30) // 60 )
-        alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name, minutes_until_match)
+        alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name, minutes_until_match)
         if cawmentator:
-            alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(cawmentator)
-        alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
-        alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
+            alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(cawmentator))
+        alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name)
+        alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name)
         yield from self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
 
     @asyncio.coroutine

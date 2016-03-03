@@ -638,9 +638,9 @@ class RaceRoom(command.Module):
 
         if send_pm:
             if member_1:
-                yield from self.client.send_message(member_1, '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(member_1.mention, self.match.racer_2.twitch_name, minutes_until_match))
+                yield from self.client.send_message(member_1, '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(member_1.mention, self.match.racer_2.escaped_twitch_name, minutes_until_match))
             if member_2:
-                yield from self.client.send_message(member_2, '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(member_2.mention, self.match.racer_1.twitch_name, minutes_until_match))
+                yield from self.client.send_message(member_2, '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(member_2.mention, self.match.racer_1.escaped_twitch_name, minutes_until_match))
 
     @asyncio.coroutine
     def countdown_to_match_start(self):        
@@ -681,7 +681,7 @@ class RaceRoom(command.Module):
                         if racer.discord_name:
                             discord_name = ' (Discord name: {0})'.format(racer.discord_name)
                         minutes_until_race = int( (self.match.time_until_match.total_seconds() + 30) // 60)
-                        yield from self.alert_staff('Alert: {0}{1} has not yet shown up for their match, which is scheduled in {2} minutes.'.format(racer.twitch_name, discord_name, minutes_until_race))
+                        yield from self.alert_staff('Alert: {0}{1} has not yet shown up for their match, which is scheduled in {2} minutes.'.format(racer.escaped_twitch_name, discord_name, minutes_until_race))
 
                 yield from self._cm.post_match_alert(self.match)
 
@@ -709,7 +709,7 @@ class RaceRoom(command.Module):
             if racer_as_member:
                 yield from self.race.enter_racer(racer_as_member)
             else:
-                yield from self.write('Error: Couldn\'t find the racer {0}. Please contact CoNDOR Staff (`.staff`).'.format(racer.twitch_name))
+                yield from self.write('Error: Couldn\'t find the racer {0}. Please contact CoNDOR Staff (`.staff`).'.format(racer.escaped_twitch_name))
                 
         yield from self.update_leaderboard()
 
@@ -803,8 +803,8 @@ class RaceRoom(command.Module):
                 yield from self.client.send_message(self.necrobot.notifications_channel,
                     'Race number {0} has finished within {1} seconds in channel {2}. ({3} -- {4}, {5} -- {6})'.format(
                         race_number, config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC, self.channel.mention,
-                        self.match.racer_1.twitch_name, racetime.to_str(racer_1_time),
-                        self.match.racer_2.twitch_name, racetime.to_str(racer_2_time)))
+                        self.match.racer_1.escaped_twitch_name, racetime.to_str(racer_1_time),
+                        self.match.racer_2.escaped_twitch_name, racetime.to_str(racer_2_time)))
 
             self._cm.condordb.record_race(self.match, racer_1_time, racer_2_time, winner, self.race.race_info.seed, self.race.start_time.timestamp(), cancelled)
 

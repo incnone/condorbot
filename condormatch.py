@@ -18,11 +18,18 @@ class CondorRacer(object):
 
     @property
     def infostr(self):
-        return '{0} (twitch.tv/{1}), timezone {2}'.format(self.discord_name, self.twitch_name, self.timezone)
+        return '{0} (twitch.tv/{1}), timezone {2}'.format(self.discord_name, self.escaped_twitch_name, self.timezone)
 
     @property
     def gsheet_regex(self):
         return re.compile( r'(?i)' + re.escape(self.twitch_name) )
+
+    @property
+    def escaped_twitch_name(self):
+        escaped_name = self.twitch_name
+        for char in ['*', '~', '_']:
+            escaped_name = escaped_name.replace(char, '\\' + char)
+        return escaped_name
 
     def utc_to_local(self, utc_dt):
         if not self.timezone in pytz.all_timezones:
