@@ -654,8 +654,10 @@ class ForceBeginMatch(command.CommandType):
                     match.confirm(racer)                
                 self._cm.condordb.update_match(match)
 
-                yield from self._cm.make_race_room(match, lambda m: not m.scheduled)
-            
+                yield from self._cm.make_race_room(match)
+                yield from self._cm.update_match_channel(match)
+                yield from self._cm.update_schedule_channel()
+                
 class ForceConfirm(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forceconfirm')
@@ -693,6 +695,27 @@ class ForceConfirm(command.CommandType):
                 
             yield from self._cm.update_match_channel(match)
             yield from self._cm.update_schedule_channel()
+
+class ForceReboot(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'forcereboot')
+        self.help_text = 'Reboots the race room.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if self._cm.necrobot.is_admin(command.author):
+            match = self._cm.condordb.get_match_from_channel_id(command.channel.id)
+            if not match:
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Error: This match wasn\'t found in the database.')
+                return            
+            else:
+                yield from self._cm.reboot_race_room(match)
+                yield from self._cm.update_match_channel(match)
 
 class ForceRescheduleUTC(command.CommandType):
     def __init__(self, condor_module):
@@ -900,6 +923,7 @@ class CondorModule(command.Module):
                               Remind(self),
                               ForceBeginMatch(self),
                               ForceConfirm(self),
+                              ForceReboot(self),
                               ForceRescheduleUTC(self),
                               ForceUnschedule(self),
                               ForceUpdate(self),
@@ -1043,6 +1067,13 @@ class CondorModule(command.Module):
             asyncio.ensure_future(room.initialize())
 
     @asyncio.coroutine
+    def reboot_race_room(self, match):
+        channel = self.necrobot.find_channel_with_id(self.condordb.find_match_channel_id(match))
+        if channel:
+            self._racerooms = [room for room in self._racerooms if int(room.channel.id) != int(channel.id)]
+            self.make_race_room(match)
+
+    @asyncio.coroutine
     def update_match_channel(self, match):
         if match.confirmed and match.time_until_alert < datetime.timedelta(seconds=1):
             yield from self.make_race_room(match)
@@ -1184,8 +1215,8 @@ class CondorModule(command.Module):
         alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name, minutes_until_match)
         if cawmentator:
             alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(cawmentator))
-        alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name)
-        alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name)
+        alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
+        alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         yield from self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
 
     @asyncio.coroutine
