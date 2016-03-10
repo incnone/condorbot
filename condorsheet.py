@@ -287,23 +287,9 @@ class CondorSheet(object):
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
-                date_col = None
-                sched_col = None
-                try:
-                    date_col = wks.find('Date:')
-                except gspread.exceptions.CellNotFound:
-                    date_col = None
-                try:
-                    sched_col = wks.find('Scheduled:')
-                except gspread.exceptions.CellNotFound:
-                    sched_col = None
-                    
-                the_col = date_col.col if date_col else (sched_col.col if sched_col else None)
-                if the_col:
-                    sched_cell = wks.cell(match_row, the_col)
-                    print("sched_cell ({0}, {1})".format(match_row, the_col))
-                    if sched_cell:
-                        print(sched_cell.value.lower())
+                cawmentary_column = wks.find('Cawmentary:')
+                if cawmentary_column:
+                    sched_cell = wks.cell(match_row, cawmentary_column.col)
                     if sched_cell and sched_cell.value.lower().startswith("showcase"):
                         return True            
                 else:
