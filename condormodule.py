@@ -1255,7 +1255,7 @@ class CondorModule(command.Module):
 
             if text:
                 yield from self.necrobot.client.send_message(channel,
-                    '{0}: {1}'.format(mention_str, content))
+                    '{0}: {1}'.format(mention_str, text))
             else:
                 yield from self.necrobot.client.send_message(channel,
                     '{0}: Please remember to schedule your races!'.format(mention_str))
