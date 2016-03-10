@@ -630,6 +630,8 @@ class Remind(command.CommandType):
             if command.channel == self._cm.admin_channel:
                 text = command.content if command.content else None
                 yield from self._cm.remind_all(text, lambda m: not m.confirmed)
+                yield from self._cm.necrobot.client.send_message(command.channel,
+                    'Reminders sent.')
                                                                        
 class ForceBeginMatch(command.CommandType):
     def __init__(self, condor_module):
