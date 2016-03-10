@@ -1223,7 +1223,8 @@ class CondorModule(command.Module):
     def remind_all(self, text=None, condition=lambda m: True):
         match_list = self.condordb.get_all_matches()
         for match in match_list:
-            if condition(match):
+            showcase = yield from self.condorsheet.is_showcase_match(match)
+            if condition(match) and not showcase:
                 yield from self._remind_match(match, text)
             
     @asyncio.coroutine
@@ -1242,7 +1243,8 @@ class CondorModule(command.Module):
             for racer in match.racers:
                 racer_member = self.necrobot.find_member_with_id(racer.discord_id)
                 if racer_member:
-                    mention_str += racer_member.mention + ', '
+                    mention_str += racer_member.mention + ', '                      
+
             if mention_str:
                 mention_str = mention_str[:-2]
             else:
@@ -1254,4 +1256,6 @@ class CondorModule(command.Module):
                     '{0}: {1}'.format(mention_str, content))
             else:
                 yield from self.necrobot.client.send_message(channel,
-                    '{0}: Please remember to schedule your races!'.format(mention_str))     
+                    '{0}: Please remember to schedule your races!'.format(mention_str))
+
+

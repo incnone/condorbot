@@ -276,3 +276,38 @@ class CondorSheet(object):
                     print('Couldn\'t find the Cawmentary: column.')
             else:
                 print('Couldn\'t find row for the match.')
+
+    @asyncio.coroutine
+    def is_showcase_match(self, match):
+        return self._do_with_lock(self._is_showcase_match, match)        
+
+    @asyncio.coroutine
+    def _is_showcase_match(self, match):
+        wks = self._get_wks(match.week)
+        if wks:
+            match_row = self._get_row(match, wks)
+            if match_row:
+                date_col = None
+                sched_col = None
+                try:
+                    date_col = wks.find('Date:')
+                except gspread.exceptions.CellNotFound:
+                    date_col = None
+                try:
+                    sched_col = wks.find('Scheduled:')
+                except gspread.exceptions.CellNotFound:
+                    sched_col = None
+                    
+                the_col = date_col.col if date_col else (sched_col.col if sched_col else None)
+                if the_col:
+                    sched_cell = wks.cell(match_row, the_col)
+                    print("sched_cell ({0}, {1})".format(match_row, the_col))
+                    if sched_cell:
+                        print(sched_cell.value.lower())
+                    if sched_cell and sched_cell.value.lower().startswith("showcase"):
+                        return True            
+                else:
+                    print('Couldn\'t find either the "Date:" or "Scheduled:" column on the GSheet.')
+            else:
+                print('Couldn\'t find row for the match.')
+        return False
