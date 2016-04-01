@@ -10,7 +10,7 @@ channel_notifications=bot_notifications
 
 admin_roles=CoNDOR Staff,Necrobot
 
-race_number_of_races=3
+race_number_of_races=5
 race_alert_at_minutes=30
 race_countdown_time_seconds=10
 race_begin_counting_down_at=5
