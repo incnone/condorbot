@@ -45,7 +45,7 @@ def init(config_filename):
         'race_begin_counting_down_at':'5',
         'race_end_after_first_done_seconds':'15',
         'race_notify_if_times_within_seconds':'5',
-        'db_filename':'data/condors4.db',
+        'db_filename':'data/ndwc.db',
         'gsheet_credentials_filename':'data/gsheet_credentials.json',
         'gsheet_doc_name':'CoNDOR Season 4',
         'gsheet_timezone':'US/Eastern',

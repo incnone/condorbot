@@ -6,3 +6,6 @@ discord.log
 data/official_login_info
 *.log
 data/bot_config_fake
+data/login_info.txt
+data/test_login_info.txt
+data/official_login_info.txt

@@ -587,7 +587,7 @@ class RaceRoom(command.Module):
     def update_leaderboard(self):
         if self.race or self.match.time_until_match.total_seconds() < 0:
             topic = '``` \n'
-            topic += 'Condor Season 4 Match (Cadence Seeded)\n'
+            topic += 'Necrodancer World Cup Match (Cadence Seeded)\n'
             max_name_len = 0
             for racer in self.match.racers:
                 max_name_len = max(max_name_len, len(racer.discord_name))
@@ -733,7 +733,10 @@ class RaceRoom(command.Module):
 
     @property
     def played_all_races(self):
-        return self._cm.condordb.number_of_finished_races(self.match) >= config.RACE_NUMBER_OF_RACES
+        if self.match.is_best_of:
+            return self._cm.condordb.number_of_wins_of_leader(self.match) >= (match.number_of_races//2 + 1)
+        else:
+            return self._cm.condordb.number_of_finished_races(self.match) >= match.number_of_races
 
     @property
     def race_to_contest(self):

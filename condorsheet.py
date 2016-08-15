@@ -64,6 +64,22 @@ class CondorSheet(object):
         gc = gspread.authorize(self._credentials)
         self._gsheet = gc.open(config.GSHEET_DOC_NAME)
 
+    def _set_best_of_info(self, match, bestof_str):
+        if bestof_str.startswith('bo'):
+            try:
+                bestof_num = int(bestof_str.lstrip('bo'))
+                match.set_best_of(bestof_num)
+            except ValueError:
+                print('Error parsing <{}> as best-of-N information.'.format(bestof_str))            
+        elif bestof_str.startswith('r'):
+            try:
+                repeat_num = int(bestof_str.lstrip('r'))
+                match.set_repeat(repeat_num)
+            except ValueError:
+                print('Error parsing <{}> as repeat-N information.'.format(bestof_str))
+        elif not bestof_str == '':
+            print('Error parsing <{}> as best-of-N or repeat-N information.'.format(bestof_str))
+
     @asyncio.coroutine
     def _do_with_lock(self, function, *args, **kwargs):
         yield from self._lock
@@ -89,15 +105,17 @@ class CondorSheet(object):
             racer_1_headcell = wks.find("Racer 1")
             racer_1_footcell = wks.find("--------")
 
-            ul_addr = wks.get_addr_int(racer_1_headcell.row+1, racer_1_headcell.col)
+            ul_addr = wks.get_addr_int(racer_1_headcell.row+1, racer_1_headcell.col-1)
             lr_addr = wks.get_addr_int(racer_1_footcell.row-1, racer_1_footcell.col+1)
             racers = wks.range('{0}:{1}'.format(ul_addr, lr_addr))
 
-            for cell in grouper(racers, 2, None):
-                racer_1 = self._db.get_from_twitch_name(cell[0].value.rstrip(' '), register=True)
-                racer_2 = self._db.get_from_twitch_name(cell[1].value.rstrip(' '), register=True)
+            for cell in grouper(racers, 3, None):
+                racer_1 = self._db.get_from_twitch_name(cell[1].value.rstrip(' '), register=True)
+                racer_2 = self._db.get_from_twitch_name(cell[2].value.rstrip(' '), register=True)
                 if racer_1 and racer_2:
-                    matches.append(CondorMatch(racer_1, racer_2, week))
+                    new_match = CondorMatch(racer_1, racer_2, week)
+                    self._set_best_of_info(new_match, cell[0].value.rstrip(' '))
+                    matches.append(new_match)
 
             return matches
         else:

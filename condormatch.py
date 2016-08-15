@@ -63,9 +63,10 @@ class CondorMatch(object):
     FLAG_CONTESTED = int(1) << 6
     FLAG_UNCONFIRMED_BY_R1 = int(1) << 7
     FLAG_UNCONFIRMED_BY_R2 = int(1) << 8
+    FLAG_BEST_OF = int(1) << 9
 
     def notflag(flag):
-        FULL_FLAG = (int(1) << 9) - 1
+        FULL_FLAG = (int(1) << 10) - 1
         return FULL_FLAG - flag
 
     def __init__(self, racer_1, racer_2, week):
@@ -73,6 +74,7 @@ class CondorMatch(object):
         self._racer_2 = racer_2
         self._week = week
         self._time = None
+        self._number_of_races = config.RACE_NUMBER_OF_RACES
         self.flags = 0
 
     @property
@@ -111,9 +113,28 @@ class CondorMatch(object):
         else:
             return 0
 
+    @property
+    def is_best_of(self):
+        return self.flags & CondorMatch.FLAG_BEST_OF
+
+    @property
+    def number_of_races(self):
+        return self._number_of_races
+
     def set_from_timestamp(self, timestamp):
         td = datetime.timedelta(seconds=timestamp)
         self._time = CondorMatch.OFFSET_DATETIME + td
+
+    def set_best_of(self, out_of_n):
+        self.flags = self.flags | CondorMatch.FLAG_BEST_OF
+        self._number_of_races = out_of_n
+
+    def set_repeat(self, number_of_races):
+        self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_BEST_OF)
+        self._number_of_races = number_of_races
+
+    def set_number_of_races(self, number_of_races):
+        self._number_of_races = number_of_races
 
     def racer_number(self, racer):
         if racer == self.racer_1:

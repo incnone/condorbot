@@ -1,12 +1,12 @@
 import codecs
-#import config
+import config
 import sqlite3
 
-DB_OUT_NAME = 'data/condors4.db'
+config.init('data/bot_config.txt')
 
 ## Make the new master database, with tables set up as we want them
 def make_new_database():
-    db_conn = sqlite3.connect(DB_OUT_NAME)
+    db_conn = sqlite3.connect(config.DB_FILENAME)
     db_conn.execute("""CREATE TABLE user_data
                     (racer_id integer,
                     discord_id bigint UNIQUE ON CONFLICT REPLACE,
@@ -26,6 +26,7 @@ def make_new_database():
                     noplays int DEFAULT 0,
                     cancels int DEFAULT 0,
                     flags int DEFAULT 0,
+                    number_of_races int DEFAULT 0,
                     cawmentator_id int DEFAULT 0,
                     PRIMARY KEY (racer_1_id, racer_2_id, week_number) ON CONFLICT REPLACE)""")
     db_conn.execute("""CREATE TABLE channel_data

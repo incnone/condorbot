@@ -988,6 +988,7 @@ class CondorModule(command.Module):
                 
         # if there was no open channel, make one
 ##        if not open_match_info:
+        print('Making channel on {0} with name {1}'.format(str(self.necrobot.server), self.get_match_channel_name(match)))
         channel = yield from self.client.create_channel(self.necrobot.server, self.get_match_channel_name(match))
         channel_id = channel.id
 
