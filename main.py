@@ -82,6 +82,11 @@ def on_message(message):
     cmd = command.Command(message)
     yield from necrobot.execute(cmd)
 
+@client.event
+@asyncio.coroutine
+def on_member_join(member):
+    yield from necrobot.on_member_join(member)
+
 #-Run client-------------------------------------------------------
 try:
     loop = asyncio.get_event_loop()
