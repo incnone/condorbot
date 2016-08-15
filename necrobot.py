@@ -176,7 +176,7 @@ class Necrobot(object):
     @asyncio.coroutine
     def on_member_join(self, member):
         yield from self.client.send_message(member, textwrap.dedent("""
-            Welcome to the Necrodancer World Cup server! Please register a stream and timezone with the bot. Example:
+            Welcome to the Necrodancer World Cup server! Please register (in the #ndwc channel on the NDWC discord) a stream and timezone with the bot. Example:
             ```
             .stream eladdifficult
             .timezone America/Toronto
