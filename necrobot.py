@@ -181,6 +181,7 @@ class Necrobot(object):
             .timezone America/Toronto
             ```
             See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list of timezones. (Please prefer to choose timezones like "Canada/Toronto" to timezones like "EDT"; the former should be better at taking local daylight-savings rules into account.)""")
+        )
 
     # Returns the given Discord User as a Member of the server
     def get_as_member(self, user):
