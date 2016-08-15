@@ -2,6 +2,7 @@ import asyncio
 import discord
 import seedgen
 import sqlite3
+import textwrap
 
 import config
 import command
