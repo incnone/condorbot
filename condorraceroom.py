@@ -734,9 +734,9 @@ class RaceRoom(command.Module):
     @property
     def played_all_races(self):
         if self.match.is_best_of:
-            return self._cm.condordb.number_of_wins_of_leader(self.match) >= (match.number_of_races//2 + 1)
+            return self._cm.condordb.number_of_wins_of_leader(self.match) >= (self.match.number_of_races//2 + 1)
         else:
-            return self._cm.condordb.number_of_finished_races(self.match) >= match.number_of_races
+            return self._cm.condordb.number_of_finished_races(self.match) >= self.match.number_of_races
 
     @property
     def race_to_contest(self):
