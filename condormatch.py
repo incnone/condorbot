@@ -261,7 +261,7 @@ class CondorMatch(object):
         elif racer.twitch_name == self.racer_2.twitch_name:
             self.flags = self.flags | CondorMatch.FLAG_UNCONFIRMED_BY_R2
             if not self.confirmed:
-                self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1)
+                self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
                 
         if self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R1 and self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R2:
             self.flags = 0
