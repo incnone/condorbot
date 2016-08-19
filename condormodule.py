@@ -1218,7 +1218,7 @@ class CondorModule(command.Module):
         alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name, minutes_until_match)
         if cawmentator:
             alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(cawmentator))
-        alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(_escaped(match.racer_1.twitch_name).lower(), _escaped(match.racer_2.twitch_name).lower())
+        alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(match.racer_1.twitch_name.lower(), match.racer_2.twitch_name.lower())
         #alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         #alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         yield from self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
