@@ -39,6 +39,9 @@ class CondorSheet(object):
     def _get_wks(self, week):
         worksheet_name = "Week {}".format(week)
         return self._gsheet.worksheet(worksheet_name)
+    
+    def _get_standings(self):
+        return self._gsheet.worksheet('Standings')
         
     def _get_row(self, match, wks):
         racer_1_cells = []
@@ -50,7 +53,7 @@ class CondorSheet(object):
             racer_2_cells = wks.findall(racer_2_regex)
         except xml.etree.ElementTree.ParseError as e:
             timestamp = datetime.datetime.utcnow()
-            print('{0}: XML parse error when looking up racer names: {1}, {2}.'.format(timestamp.strftime("%Y/%m/%d %H:%M:%S"), match.racer_1.twitch_name, match.racer_2.twitch_name))
+            print('{0}: XML parse error when looking up racer names in week sheet: {1}, {2}.'.format(timestamp.strftime("%Y/%m/%d %H:%M:%S"), match.racer_1.twitch_name, match.racer_2.twitch_name))
             print(e)
             traceback.print_exc()
             raise
@@ -119,7 +122,7 @@ class CondorSheet(object):
 
             return matches
         else:
-            print('Couldn\'t find worksheet <{}>.'.worksheet_name)
+            print('Couldn\'t find worksheet for week {}.'.week)
 
     @asyncio.coroutine
     def unschedule_match(self, match):
@@ -127,7 +130,8 @@ class CondorSheet(object):
 
     @asyncio.coroutine
     def _unschedule_match(self, match):
-        wks = self._get_wks(match.week)
+        week = match.week
+        wks = self._get_wks(week)
         if wks:
             match_row = self._get_row(match, wks)
             if match_row:
@@ -150,7 +154,7 @@ class CondorSheet(object):
             else:
                 print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
         else:
-            print('Couldn\'t find worksheet <{}>.'.worksheet_name)            
+            print('Couldn\'t find worksheet for week {}.'.week)
 
     @asyncio.coroutine
     def schedule_match(self, match):
@@ -220,16 +224,52 @@ class CondorSheet(object):
                     wks.update_cell(match_row, winner_column.col, winner)
                 else:
                     print('Couldn\'t find the "Winner:" column on the GSheet.')
+                    return
 
                 score_column = wks.find('Game Score:')
                 if score_column:
                     wks.update_cell(match_row, score_column.col, score_str)
                 else:
                     print('Couldn\'t find the "Game Score:" column on the GSheet.')
+                    return
+                
+                _update_standings(self, match, match_results);
             else:
                 print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
         else:
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)        
+
+
+    @asyncio.coroutine
+    def _update_standings(self, match, match_results):
+        standings = self._get_standings
+        if standings:
+            racer_1_cells = []
+            racer_1_regex = match.racer_1.gsheet_regex
+            racer_2_cells = []
+            racer_2_regex = match.racer_2.gsheet_regex
+            try:
+                racer_1_cells = standings.findall(racer_1_regex)
+                racer_2_cells = standings.findall(racer_2_regex)
+            except xml.etree.ElementTree.ParseError as e:
+                timestamp = datetime.datetime.utcnow()
+                print('{0}: XML parse error when looking up racer names in the standings: {1}, {2}.'.format(timestamp.strftime("%Y/%m/%d %H:%M:%S"), match.racer_1.twitch_name, match.racer_2.twitch_name))
+                print(e)
+                traceback.print_exc()
+                raise
+            
+            _set_score(standings, racer_1_cells, racer_2_cells, match_results[0])
+            _set_score(standings, racer_2_cells, racer_1_cells, match_results[1])
+        else:
+            print('Couldn\'t find worksheet <standings>.')
+            
+    def _set_score(standings, racer_1_cells, racer_2_cells, score):
+        for cell_1 in racer_1_cells:
+            if cell_1.col == 2:
+                for cell_2 in racer_2_cells:
+                    if cell_2.row == cell_1.row:
+                        standings.update_cell(cell_1.row, cell_2.col - 7, score)
+                        return
 
     @asyncio.coroutine
     def get_cawmentary(self, match):
