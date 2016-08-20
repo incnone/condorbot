@@ -258,12 +258,12 @@ class CondorSheet(object):
                 traceback.print_exc()
                 raise
             
-            _set_score(standings, racer_1_cells, racer_2_cells, match_results[0])
-            _set_score(standings, racer_2_cells, racer_1_cells, match_results[1])
+            self._set_score(standings, racer_1_cells, racer_2_cells, match_results[0])
+            self._set_score(standings, racer_2_cells, racer_1_cells, match_results[1])
         else:
             print('Couldn\'t find worksheet <standings>.')
             
-    def _set_score(standings, racer_1_cells, racer_2_cells, score):
+    def _set_score(self, standings, racer_1_cells, racer_2_cells, score):
         for cell_1 in racer_1_cells:
             if cell_1.col == 2:
                 for cell_2 in racer_2_cells:
