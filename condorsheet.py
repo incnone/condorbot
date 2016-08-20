@@ -233,7 +233,7 @@ class CondorSheet(object):
                     print('Couldn\'t find the "Game Score:" column on the GSheet.')
                     return
                 
-                _update_standings(self, match, match_results);
+                self._update_standings(match, match_results);
             else:
                 print('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(match.racer_1.twitch_name, match.racer_2.twitch_name))
         else:
