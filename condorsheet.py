@@ -242,7 +242,7 @@ class CondorSheet(object):
 
     #@asyncio.coroutine
     def _update_standings(self, match, match_results):
-        standings = self._get_standings
+        standings = self._get_standings()
         if standings:
             racer_1_cells = []
             racer_1_regex = match.racer_1.gsheet_regex
