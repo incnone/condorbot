@@ -240,7 +240,7 @@ class CondorSheet(object):
             print('Couldn\'t find worksheet <{}>.'.worksheet_name)        
 
 
-    @asyncio.coroutine
+    #@asyncio.coroutine
     def _update_standings(self, match, match_results):
         standings = self._get_standings
         if standings:
