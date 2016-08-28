@@ -22,7 +22,7 @@ class CondorRacer(object):
 
     @property
     def gsheet_regex(self):
-        return re.compile( r'(?i)^' + re.escape(self.twitch_name) + r'$' )
+        return re.compile( r'(?i)^\s*' + re.escape(self.twitch_name) + r'\s*$' )
 
     @property
     def escaped_twitch_name(self):
