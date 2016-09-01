@@ -14,6 +14,7 @@ import pytz
 
 from raceinfo import RaceInfo
 from racer import Racer
+from events import Events
 
 RaceStatus = {'uninitialized':0, 'entry_open':1, 'counting_down':2, 'racing':3, 'paused':4, 'completed':5, 'finalized':6, 'cancelled':7}
 StatusStrs = {'0':'Not initialized.', '1':'Waiting for racers to `.ready`.', '2':'Starting!', '3':'In progress!', '4':'Paused!', '5':'Complete.', '6':'Results Finalized.', '7':'Race Cancelled.'}
@@ -175,6 +176,7 @@ class Race(object):
     # Begins the race. Called by the countdown.
     @asyncio.coroutine
     def _begin_race(self):
+        racer_list = []
         for r_id in self.racers:
             racer = self.condordb.get_from_discord_id(r_id)
             racer_list.append(racer.twitch_name)
@@ -184,6 +186,8 @@ class Race(object):
         self._start_time = time.clock()
         self._start_datetime = datetime.datetime.utcnow()
         yield from self.room.write('GO!')
+        #Send race start event
+        self.events.racestart(racer_list[0], racer_list[1])
         self._status = RaceStatus['racing']
         asyncio.ensure_future(self.room.update_leaderboard())
 

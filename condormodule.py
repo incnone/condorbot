@@ -17,6 +17,7 @@ from condormatch import CondorMatch
 from condormatch import CondorRacer
 from condorraceroom import RaceRoom
 from condorsheet import CondorSheet
+from events import Events
 
 def _escaped(discord_str):
     escaped_str = discord_str
@@ -906,6 +907,7 @@ class CondorModule(command.Module):
         command.Module.__init__(self, necrobot)
         self.condordb = CondorDB(db_connection)
         self.condorsheet = CondorSheet(self.condordb)
+        self.events = Events()
         self._racerooms = []
         self._alerted_channels = []
 
@@ -1222,6 +1224,8 @@ class CondorModule(command.Module):
         #alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         #alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         yield from self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
+        #Send race soon event
+        self.events.racesoon(match.racer_1.twitch_name, match.racer_2.twitch_name)
 
     @asyncio.coroutine
     def remind_all(self, text=None, condition=lambda m: True):
