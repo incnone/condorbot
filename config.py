@@ -30,11 +30,6 @@ def init(config_filename):
     global GSHEET_CREDENTIALS_FILENAME
     global GSHEET_DOC_NAME
     global GSHEET_TIMEZONE
-
-    #events
-    global EVENTS_ACTIVATED
-    global EVENTS_SERVER
-    global EVENTS_PORT
     
     defaults = {
         'bot_command_prefix':'.',
@@ -54,9 +49,6 @@ def init(config_filename):
         'gsheet_credentials_filename':'data/gsheet_credentials.json',
         'gsheet_doc_name':'CoNDOR Season 4',
         'gsheet_timezone':'US/Eastern',
-        'events_activated':'true',
-        'events_server':'necrommunity.ovh',
-        'events_port':'5000'
         }
 
     admin_roles = []
@@ -98,7 +90,3 @@ def init(config_filename):
     GSHEET_CREDENTIALS_FILENAME = defaults['gsheet_credentials_filename']
     GSHEET_DOC_NAME = defaults['gsheet_doc_name']
     GSHEET_TIMEZONE = defaults['gsheet_timezone']
-
-    EVENTS_ACTIVATED = bool(defaults['events_activated'])
-    EVENTS_SERVER = defaults['events_server']
-    EVENTS_PORT = int(defaults['events_port'])
