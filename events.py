@@ -14,7 +14,7 @@ class Events():
     def matchend(racer_1, racer_2):
         self._send_event('matchend', {'racer1': racer_1, 'racer2': racer_2})
 
-    def _send_event(event, data):
-        if(EVENTS_ACTIVATED):
-            with SocketIO(EVENTS_SERVER, EVENTS_PORT, LoggingNamespace) as socketIO:
+    def _send_event(self, event, data):
+        if(config.EVENTS_ACTIVATED):
+            with SocketIO(config.EVENTS_SERVER, config.EVENTS_PORT, LoggingNamespace) as socketIO:
                 socketIO.emit(event, data)
