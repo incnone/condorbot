@@ -21,7 +21,3 @@ db_filename=data/ndwc.db
 gsheet_credentials_filename=data/gsheet_credentials.json
 gsheet_doc_name=NDWC matchup chart
 gsheet_timezone=US/Eastern
-
-events_activated=true
-events_server=necrommunity.ovh
-events_port=5000
