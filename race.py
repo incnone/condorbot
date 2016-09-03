@@ -31,9 +31,10 @@ def status_str(race_status):
 class Race(object):
 
     # NB: Call the coroutine initialize() to set up the room
-    def __init__(self, race_room, race_info):
+    def __init__(self, race_room, race_info, condordb):
         self.room = race_room
         self.events = Events()
+        self.condordb = condordb
         self.race_info = race_info                  #Information on the type of race (e.g. seeded, seed, character) -- see RaceInfo for details
         self.racers = dict()                        #a dictionary of racers indexed by user id
         self._status = RaceStatus['uninitialized']  #see RaceStatus
@@ -177,7 +178,8 @@ class Race(object):
     def _begin_race(self):
         racer_list = []
         for r_id in self.racers:
-            racer_list.append(self.racers[r_id].twitch_name)
+            racer = self.condordb.get_from_discord_id(r_id)
+            racer_list.append(racer.twitch_name)
             if not self.racers[r_id].begin_race():
                 print("{} isn't ready while calling race.begin_race -- unexpected error.".format(racer.name))
 
@@ -209,9 +211,10 @@ class Race(object):
             racer_list = []
             winner_time = 0
             for r_id in self.racers:
-                racer_list.append(self.racers[r_id].twitch_name)
+                racer = self.condordb.get_from_discord_id(r_id)
+                racer_list.append(racer.twitch_name)
                 if self.racers[r_id].is_done_racing and (winner_time == 0 or self.racers[r_id].time < winner_time):
-                    winner = self.racers[r_id].twitch_name
+                    winner = racer.twitch_name
                     winner_time = self.racers[r_id].time
             #Send race end event with the winner
             self.events.raceend(racer_list[0], racer_list[1], winner)

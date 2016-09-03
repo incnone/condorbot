@@ -704,7 +704,7 @@ class RaceRoom(command.Module):
     def begin_new_race(self):
         self.cancelling_racers = []
         self.before_races = False
-        self.race = Race(self, RaceRoom.get_new_raceinfo())
+        self.race = Race(self, RaceRoom.get_new_raceinfo(), self._cm.condordb)
         yield from self.race.initialize()
         self.recorded_race = False
         
