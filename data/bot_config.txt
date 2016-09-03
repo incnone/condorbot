@@ -19,5 +19,5 @@ race_notify_if_times_within_seconds=5
 
 db_filename=data/ndwc.db
 gsheet_credentials_filename=data/gsheet_credentials.json
-gsheet_doc_name=Test NDWC matchup chart
+gsheet_doc_name=NDWC matchup chart
 gsheet_timezone=US/Eastern
