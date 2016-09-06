@@ -16,6 +16,7 @@ from condormatch import CondorMatch
 from race import Race
 from racer import Racer
 from raceinfo import RaceInfo
+from events import Events
 
 SUFFIXES = {1: 'st', 2: 'nd', 3: 'rd'}
 def ordinal(num):
@@ -477,6 +478,8 @@ class RaceRoom(command.Module):
         self.is_closed = False                                      #True if room has been closed
         self.match = condor_match
 
+        self.events = Events()
+
         self.race = None                                            #The current race
         self.recorded_race = False                                  #Whether the current race has been recorded
 
@@ -701,7 +704,7 @@ class RaceRoom(command.Module):
     def begin_new_race(self):
         self.cancelling_racers = []
         self.before_races = False
-        self.race = Race(self, RaceRoom.get_new_raceinfo())
+        self.race = Race(self, RaceRoom.get_new_raceinfo(), self._cm.condordb)
         yield from self.race.initialize()
         self.recorded_race = False
         
@@ -826,6 +829,8 @@ class RaceRoom(command.Module):
                                   'look into your race.')
 
             if self.played_all_races:
+                #Send match ending event if all races have been played
+                self.events.matchend(self.match.racer_1.twitch_name, self.match.racer_2.twitch_name)
                 yield from self.record_match()
             else:
                 yield from self.begin_new_race()
