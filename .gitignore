@@ -11,3 +11,5 @@ data/test_login_info.txt
 data/official_login_info.txt
 .idea/*
 data/bot_config.txt
+data/bot_config.txt
+data/real_login_info.txt

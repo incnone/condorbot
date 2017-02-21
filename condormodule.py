@@ -1178,8 +1178,7 @@ class CondorModule(command.Module):
             yield from self.update_schedule_channel()
             yield from asyncio.sleep(60)
 
-    @asyncio.coroutine
-    def update_schedule_channel(self):
+    async def update_schedule_channel(self):
         schedule_text = '``` \nUpcoming matches: \n'
         utcnow = pytz.utc.localize(datetime.datetime.utcnow())
         max_matches = 20
@@ -1205,13 +1204,13 @@ class CondorModule(command.Module):
             
         schedule_text += '```'
 
-        msgs = yield from self.necrobot.client.logs_from(self.necrobot.schedule_channel)
-        for msg in msgs:
-            if msg.author.name == 'condorbot' and msg.content.startswith('```'): #hack for now
-                yield from self.necrobot.client.edit_message(msg, schedule_text)
+        async for msg in self.necrobot.client.logs_from(self.necrobot.schedule_channel):
+            if (msg.author.name == 'condorbot' or msg.author.name == 'condorbot_alpha') \
+                    and msg.content.startswith('```'):  # hack for now
+                await self.necrobot.client.edit_message(msg, schedule_text)
                 return
 
-        yield from self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
+        await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
             
     @asyncio.coroutine
     def post_match_alert(self, match):

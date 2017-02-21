@@ -33,7 +33,6 @@ class CondorDB(object):
         racer = CondorRacer(row[2])
         racer.discord_id = row[0]
         racer.discord_name = row[1]
-        racer.steam_id = row[3]
         racer.timezone = row[4]
         return racer
 
@@ -81,7 +80,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (racer_id,)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,steam_id,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone "
             "FROM user_data "
             "WHERE racer_id=%s",
             params)
@@ -98,7 +97,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (discord_id,)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,steam_id,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone "
             "FROM user_data "
             "WHERE discord_id=%s",
             params)
@@ -115,7 +114,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (discord_name.lower(),)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,steam_id,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone "
             "FROM user_data "
             "WHERE LOWER(discord_name)=%s",
             params)
@@ -132,7 +131,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (twitch_name.lower(),)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,steam_id,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone "
             "FROM user_data "
             "WHERE LOWER(twitch_name)=%s",
             params)
@@ -152,23 +151,6 @@ class CondorDB(object):
             else:
                 self._log_warning('Couldn\'t find twitch name <{}>.'.format(twitch_name))
 
-        self._close()
-        return to_return
-
-    def get_from_steam_id(self, steam_id):
-        to_return = None
-        self._connect()
-        cursor = self._db_conn.cursor()
-        params = (steam_id,)
-        cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,steam_id,timezone "
-            "FROM user_data "
-            "WHERE steam_id=%s",
-            params)
-        for row in cursor:
-            to_return = CondorDB._get_racer_from_row(row)
-        if to_return is None:
-            self._log_warning('Couldn\'t find steam id <{}>.'.format(steam_id))
         self._close()
         return to_return
 
@@ -270,20 +252,20 @@ class CondorDB(object):
                     'Error: User {0} tried to register twitch name {1}, but that name is already registered '
                     'to {2}.'.format(racer.discord_name, racer.twitch_name, row[1]))
             else:
-                params = (racer.discord_id, racer.discord_name, racer.twitch_name, racer.steam_id,
+                params = (racer.discord_id, racer.discord_name, racer.twitch_name,
                           racer.timezone, racer.twitch_name.lower(),)
                 cursor.execute(
                     "UPDATE user_data "
-                    "SET discord_id=%s, discord_name=%s, twitch_name=%s, steam_id=%s, timezone=%s "
+                    "SET discord_id=%s, discord_name=%s, twitch_name=%s, timezone=%s "
                     "WHERE LOWER(twitch_name)=%s",
                     params)
                 success = True
 
         if not success and not already_registered:
-            params = (racer.discord_id, racer.discord_name, racer.steam_id, racer.timezone, racer.twitch_name,)
+            params = (racer.discord_id, racer.discord_name, racer.timezone, racer.twitch_name,)
             cursor.execute(
-                "INSERT INTO user_data (discord_id, discord_name, timezone, steam_id, twitch_name) "
-                "VALUES (%s,%s,%s,%s,%s)",
+                "INSERT INTO user_data (discord_id, discord_name, timezone, twitch_name) "
+                "VALUES (%s,%s,%s,%s)",
                 params)
             success = True
 

@@ -10,7 +10,6 @@ class CondorRacer(object):
         self.discord_id = None
         self.discord_name = None
         self.twitch_name = twitch_name
-        self.steam_id = None
         self.timezone = None
 
     def __eq__(self, other):
