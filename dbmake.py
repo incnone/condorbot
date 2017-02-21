@@ -1,13 +1,21 @@
-import codecs
 import config
-import sqlite3
+import mysql.connector
+
 
 config.init('data/bot_config.txt')
 
-## Make the new master database, with tables set up as we want them
+
+# Make the new master database, with tables set up as we want them
 def make_new_database():
-    db_conn = sqlite3.connect(config.DB_FILENAME)
-    db_conn.execute("""CREATE TABLE user_data
+    db_conn = mysql.connector.connect(
+        user=config.MYSQL_DB_USER,
+        password=config.MYSQL_DB_PASSWD,
+        host=config.MYSQL_DB_HOST,
+        database=config.MYSQL_DB_NAME)
+
+    cursor = db_conn.cursor()
+
+    cursor.execute("""CREATE TABLE user_data
                     (racer_id integer,
                     discord_id bigint UNIQUE ON CONFLICT REPLACE,
                     discord_name text,
@@ -15,7 +23,7 @@ def make_new_database():
                     steam_id int,
                     timezone text,
                     PRIMARY KEY (racer_id))""")
-    db_conn.execute("""CREATE TABLE match_data
+    cursor.execute("""CREATE TABLE match_data
                     (racer_1_id int REFERENCES user_data (racer_id),
                     racer_2_id int REFERENCES user_data (racer_id),
                     week_number int,
@@ -26,17 +34,18 @@ def make_new_database():
                     noplays int DEFAULT 0,
                     cancels int DEFAULT 0,
                     flags int DEFAULT 0,
+                    league int DEFAULT 0,
                     number_of_races int DEFAULT 0,
                     cawmentator_id int DEFAULT 0,
                     PRIMARY KEY (racer_1_id, racer_2_id, week_number) ON CONFLICT REPLACE)""")
-    db_conn.execute("""CREATE TABLE channel_data
+    cursor.execute("""CREATE TABLE channel_data
                     (channel_id int,
                     racer_1_id int REFERENCES match_data (racer_1_id),
                     racer_2_id int REFERENCES match_data (racer_2_id),
                     week_number int REFERENCES match_data (week_number),
                     PRIMARY KEY (channel_id) ON CONFLICT REPLACE)
                     """)
-    db_conn.execute("""CREATE TABLE race_data
+    cursor.execute("""CREATE TABLE race_data
                     (racer_1_id int REFERENCES match_data (racer_1_id),
                     racer_2_id int REFERENCES match_data (racer_2_id),
                     week_number int REFERENCES match_data (week_number),
@@ -50,9 +59,10 @@ def make_new_database():
                     flags int DEFAULT 0,
                     PRIMARY KEY (racer_1_id, racer_2_id, week_number, race_number) ON CONFLICT ABORT)
                     """)
+
     db_conn.commit()
     db_conn.close()
 
-##-------------------------
+# -------------------------
 
 make_new_database()

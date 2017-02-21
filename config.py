@@ -24,7 +24,10 @@ def init(config_filename):
     global FINALIZE_TIME_SEC                       #seconds after race end to finalize+record race
 
     #database
-    global DB_FILENAME
+    global MYSQL_DB_USER
+    global MYSQL_DB_PASSWD
+    global MYSQL_DB_HOST
+    global MYSQL_DB_NAME
 
     #gsheets
     global GSHEET_CREDENTIALS_FILENAME
@@ -50,7 +53,10 @@ def init(config_filename):
         'race_begin_counting_down_at':'5',
         'race_end_after_first_done_seconds':'15',
         'race_notify_if_times_within_seconds':'5',
-        'db_filename':'data/ndwc.db',
+        'mysql_db_user':'',
+        'mysql_db_passwd':'',
+        'mysql_db_host':'',
+        'mysql_db_name':'',
         'gsheet_credentials_filename':'data/gsheet_credentials.json',
         'gsheet_doc_name':'CoNDOR Season 4',
         'gsheet_timezone':'US/Eastern',
@@ -94,7 +100,11 @@ def init(config_filename):
     INCREMENTAL_COUNTDOWN_START = int(defaults['race_begin_counting_down_at'])
     FINALIZE_TIME_SEC = int(defaults['race_end_after_first_done_seconds'])
 
-    DB_FILENAME = defaults['db_filename']
+    MYSQL_DB_USER = defaults['mysql_db_user']
+    MYSQL_DB_PASSWD = defaults['mysql_db_passwd']
+    MYSQL_DB_HOST = defaults['mysql_db_host']
+    MYSQL_DB_NAME = defaults['mysql_db_name']
+
     GSHEET_CREDENTIALS_FILENAME = defaults['gsheet_credentials_filename']
     GSHEET_DOC_NAME = defaults['gsheet_doc_name']
     GSHEET_TIMEZONE = defaults['gsheet_timezone']

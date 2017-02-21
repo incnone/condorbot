@@ -1,7 +1,6 @@
 import asyncio
 import discord
 import logging
-import sqlite3
 
 import command
 import config
@@ -48,7 +47,7 @@ logger.addHandler(handler)
 #-General init----------------------------------------------------
 config.init('data/bot_config.txt')
 client = discord.Client()                                                       # the client for discord
-necrobot = Necrobot(client, sqlite3.connect(config.DB_FILENAME))
+necrobot = Necrobot(client)
 seedgen.init_seed()
 
 #-Get login data from file----------------------------------------
@@ -70,7 +69,7 @@ def on_ready():
     print(' ')
     necrobot.post_login_init(login_data.server_id, login_data.admin_id)
 
-    necrobot.load_module(CondorModule(necrobot, sqlite3.connect(config.DB_FILENAME)))
+    necrobot.load_module(CondorModule(necrobot))
 
     yield from necrobot.init_modules()
 

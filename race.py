@@ -8,7 +8,6 @@ import config
 import datetime
 import discord
 import racetime
-import sqlite3
 import time
 import pytz
 

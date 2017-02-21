@@ -1,7 +1,6 @@
 import asyncio
 import discord
 import seedgen
-import sqlite3
 import textwrap
 
 import config
@@ -12,13 +11,12 @@ from adminmodule import AdminModule
 class Necrobot(object):
 
     ## Barebones constructor
-    def __init__(self, client, db_conn):
+    def __init__(self, client):
         self.client = client
         self.server = None
         self.prefs = None
         self.modules = []
         self.admin_id = None
-        self.db_conn = db_conn
         self._main_channel = None
         self._notifications_channel = None
         self._schedule_channel = None

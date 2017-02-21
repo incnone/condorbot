@@ -903,9 +903,9 @@ class ForceTransferAccount(command.CommandType):
             yield from self._cm.client.send_message(command.channel, '{0}: Transfered racer account {1} to member {2}.'.format(command.author.mention, from_racer.escaped_twitch_name, to_member.mention))
 
 class CondorModule(command.Module):
-    def __init__(self, necrobot, db_connection):
+    def __init__(self, necrobot):
         command.Module.__init__(self, necrobot)
-        self.condordb = CondorDB(db_connection)
+        self.condordb = CondorDB()
         self.condorsheet = CondorSheet(self.condordb)
         self.events = Events()
         self._racerooms = []
