@@ -1,6 +1,6 @@
 CREATE TABLE user_data
 (
-    racer_id integer,
+    racer_id integer AUTO_INCREMENT,
 	discord_id bigint,
 	discord_name text,
 	twitch_name VARCHAR(25),
@@ -56,3 +56,5 @@ CREATE TABLE race_data
 	PRIMARY KEY (racer_1_id, racer_2_id, week_number, race_number),
     FOREIGN KEY match_id (racer_1_id, racer_2_id, week_number) REFERENCES match_data (racer_1_id, racer_2_id, week_number)
 );
+
+SELECT * FROM user_data;

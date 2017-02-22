@@ -96,4 +96,3 @@ except Exception as e:
     loop.run_until_complete(client.close())
 finally:
     loop.close()
-

@@ -462,6 +462,7 @@ class ForceRecordMatch(command.CommandType):
                                 
 class RaceRoom(command.Module):
 
+    @staticmethod
     def get_new_raceinfo():
         to_return = RaceInfo()
         to_return.seed_fixed = False

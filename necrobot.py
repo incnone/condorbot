@@ -24,9 +24,17 @@ class Necrobot(object):
 
     ## Initializes object; call after client has been logged in to discord
     def post_login_init(self, server_id, admin_id=0):
+        self.server = None
+        self.prefs = None
+        self.modules.clear()
+        self._main_channel = None
+        self._notifications_channel = None
+        self._schedule_channel = None
+        self._wants_to_quit = False
+
         self.admin_id = admin_id if admin_id else None
        
-        #set up server
+        # set up server
         id_is_int = False
         try:
             server_id_int = int(server_id)
@@ -174,7 +182,7 @@ class Necrobot(object):
     @asyncio.coroutine
     def on_member_join(self, member):
         yield from self.client.send_message(member, textwrap.dedent("""
-            Welcome to the Necrodancer World Cup server! Please register (in the #ndwc channel on the NDWC discord) a stream and timezone with the bot. Example:
+            Welcome to the CoNDOR Season 5 server! Please register a stream and timezone with the bot. Example:
             ```
             .stream eladdifficult
             .timezone America/Toronto
