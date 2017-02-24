@@ -33,7 +33,9 @@ class CondorDB(object):
         racer = CondorRacer(row[2])
         racer.discord_id = row[0]
         racer.discord_name = row[1]
-        racer.timezone = row[4]
+        racer.timezone = row[3]
+        if row[4] is not None:
+            racer.rtmp_name = row[4]
         return racer
 
     def _get_racer_id(self, condor_racer):
@@ -80,7 +82,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (racer_id,)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
             "FROM user_data "
             "WHERE racer_id=%s",
             params)
@@ -97,7 +99,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (discord_id,)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
             "FROM user_data "
             "WHERE discord_id=%s",
             params)
@@ -114,7 +116,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (discord_name.lower(),)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
             "FROM user_data "
             "WHERE LOWER(discord_name)=%s",
             params)
@@ -131,7 +133,7 @@ class CondorDB(object):
         cursor = self._db_conn.cursor()
         params = (twitch_name.lower(),)
         cursor.execute(
-            "SELECT discord_id,discord_name,twitch_name,timezone "
+            "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
             "FROM user_data "
             "WHERE LOWER(twitch_name)=%s",
             params)
@@ -272,6 +274,18 @@ class CondorDB(object):
         self._db_conn.commit()
         self._close()
         return success
+
+    def register_rtmp(self, discord_id, rtmp_name):
+        self._connect()
+        cursor = self._db_conn.cursor()
+        params = (rtmp_name, discord_id,)
+        cursor.execute(
+            "UPDATE user_data "
+            "SET rtmp_name=%s "
+            "WHERE discord_id=%s",
+            params)
+        self._db_conn.commit()
+        self._close()
 
     def register_timezone(self, discord_id, timezone):
         self._connect()

@@ -271,6 +271,39 @@ class CloseWeek(command.CommandType):
                     yield from self._cm.necrobot.client.send_message(command.channel, 'An error occurred. Please call `.closeweek` again.')
                     raise e        
 
+
+class RTMP(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'rtmp')
+        self.help_text = 'Register an RTMP stream. Usage is `.rtmp <rtmp_name>`, e.g., `.rtmp incnone`. (This is ' \
+                         'unnecessary if your RTMP name is the same as your twitch name.)'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.necrobot.main_channel
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        if len(command.args) != 1:
+            yield from self._cm.necrobot.client.send_message(
+                command.channel,
+                '{0}: I was unable to parse your RTMP name because you gave too many arguments. '
+                'Use `.rtmp <rtmp_name>`.'.format(command.author.mention))
+        else:
+            rtmp_name = command.args[0]
+            if '/' in rtmp_name:
+                yield from self._cm.necrobot.client.send_message(
+                    command.channel,
+                    '{0}: Error: your RTMP name cannot contain the character /.'.format(
+                        command.author.mention))
+            else:
+                self._cm.condordb.register_rtmp(command.author.id, rtmp_name)
+                yield from self._cm.necrobot.client.send_message(
+                    command.channel,
+                    '{0}: Registered your RTMP as <{1}>'.format(
+                        command.author.mention, _escaped(rtmp_name)))
+
+
 class Staff(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'staff')
@@ -917,6 +950,7 @@ class CondorModule(command.Module):
                               Confirm(self),
                               CloseWeek(self),
                               MakeWeek(self),
+                              RTMP(self),
                               Staff(self),
                               Stream(self),
                               Suggest(self),
@@ -1219,7 +1253,7 @@ class CondorModule(command.Module):
         alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name, minutes_until_match)
         if cawmentator:
             alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(cawmentator))
-        alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(match.racer_1.twitch_name.lower(), match.racer_2.twitch_name.lower())
+        alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
         #alert_text += 'Kadgar: http://www.kadgar.net/live/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         #alert_text += 'Multitwitch: http://www.multitwitch.tv/{0}/{1} \n'.format(match.racer_1.twitch_name, match.racer_2.twitch_name)
         yield from self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)

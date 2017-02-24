@@ -10,14 +10,26 @@ class CondorRacer(object):
         self.discord_id = None
         self.discord_name = None
         self.twitch_name = twitch_name
+        self.rtmp_name = twitch_name
         self.timezone = None
 
     def __eq__(self, other):
         return self.twitch_name.lower() == other.twitch_name.lower()
 
+    @staticmethod
+    def _escaped(str):
+        for char in ['*', '-', '_']:
+            str = str.replace(char, '\\' + char)
+        return str
+
     @property
     def infostr(self):
-        return '{0} (twitch.tv/{1}), timezone {2}'.format(self.discord_name, self.escaped_twitch_name, self.timezone)
+        if self.twitch_name == self.rtmp_name:
+            return '{0}. Twitch/RTMP: {1}; Timezone: {2}'.format(
+                self.discord_name, self.escaped_twitch_name, self.timezone)
+        else:
+            return '{0}. Twitch: {1}; RTMP: {2}; Timezone: {3}'.format(
+                self.discord_name, self.escaped_twitch_name, self.escaped_rtmp_name, self.timezone)
 
     @property
     def gsheet_regex(self):
@@ -25,10 +37,11 @@ class CondorRacer(object):
 
     @property
     def escaped_twitch_name(self):
-        escaped_name = self.twitch_name
-        for char in ['*', '~', '_']:
-            escaped_name = escaped_name.replace(char, '\\' + char)
-        return escaped_name
+        return self._escaped(self.twitch_name)
+
+    @property
+    def escaped_rtmp_name(self):
+        return self._escaped(self.rtmp_name)
 
     def utc_to_local(self, utc_dt):
         if not self.timezone in pytz.all_timezones:
@@ -38,7 +51,7 @@ class CondorRacer(object):
         if utc_dt.tzinfo is not None and utc_dt.tzinfo.utcoffset(utc_dt) is not None:
             return local_tz.normalize(utc_dt.astimezone(local_tz))
         else:
-            return local_tz.normalize(pytz.utc.localize(utc_td))
+            return local_tz.normalize(pytz.utc.localize(utc_dt))
 
     def local_to_utc(self, local_dt):
         if not self.timezone in pytz.all_timezones:
