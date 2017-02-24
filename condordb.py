@@ -30,12 +30,11 @@ class CondorDB(object):
 
     @staticmethod
     def _get_racer_from_row(row):
-        racer = CondorRacer(row[2])
-        racer.discord_id = row[0]
+        racer = CondorRacer(row[0])
         racer.discord_name = row[1]
+        racer.twitch_name = row[2]
         racer.timezone = row[3]
-        if row[4] is not None:
-            racer.rtmp_name = row[4]
+        racer.rtmp_name = row[4]
         return racer
 
     def _get_racer_id(self, condor_racer):
@@ -43,12 +42,12 @@ class CondorDB(object):
 
         self._connect()
         cursor = self._db_conn.cursor()
-        params = (condor_racer.twitch_name.lower(),)
+        params = (condor_racer.discord_id,)
 
         cursor.execute(
             "SELECT racer_id "
             "FROM user_data "
-            "WHERE LOWER(twitch_name)=%s",
+            "WHERE discord_id=%s",
             params)
 
         for row in cursor:
@@ -56,18 +55,12 @@ class CondorDB(object):
 
         # If no entry, make one
         if to_return is None:
-            params = (condor_racer.twitch_name,)
-            cursor.execute(
-                "INSERT INTO user_data (twitch_name) "
-                "VALUES (%s)",
-                params)
-            self._db_conn.commit()
-            self._close()
+            self.register_racer(condor_racer)
 
             cursor.execute(
                 "SELECT racer_id "
                 "FROM user_data "
-                "WHERE LOWER(twitch_name)=%s",
+                "WHERE discord_id=%s",
                 params)
 
             for row in cursor:
@@ -234,63 +227,115 @@ class CondorDB(object):
         self._close()
 
     def register_racer(self, racer):
-        success = False
+        self._connect()
+        cursor = self._db_conn.cursor()
+        params = (racer.discord_id, racer.discord_name, racer.twitch_name, racer.timezone, racer.rtmp_name,)
+        cursor.execute(
+            "INSERT INTO user_data (discord_id, discord_name, twitch_name, timezone, rtmp_name "
+            "VALUES (%s, %s, %s, %s, %s) "
+            "ON DUPLICATE KEY UPDATE",
+            params)
+        self._db_conn.commit()
+        self._close()
+
+    def register(self, discord_member):
         already_registered = False
 
         self._connect()
         cursor = self._db_conn.cursor()
 
-        params = (racer.twitch_name.lower(),)
+        params = (discord_member.id,)
         cursor.execute(
-            "SELECT discord_id,discord_name "
+            "SELECT discord_id "
+            "FROM user_data "
+            "WHERE discord_id=%s",
+            params)
+
+        for _ in cursor:
+            already_registered = True
+            params = (discord_member.name, discord_member.id,)
+            cursor.execute(
+                "UPDATE user_data "
+                "SET discord_name=%s "
+                "WHERE discord_id=%s",
+                params)
+
+        if not already_registered:
+            params = (discord_member.id, discord_member.name,)
+            cursor.execute(
+                "INSERT INTO user_data (discord_id, discord_name) "
+                "VALUES (%s, %s)",
+                params)
+
+        self._db_conn.commit()
+        self._close()
+        return not already_registered
+
+    def register_twitch(self, discord_member, twitch_name):
+        self.register(discord_member)
+        duplicate_stream = False
+
+        self._connect()
+        cursor = self._db_conn.cursor()
+        params = (twitch_name,)
+        cursor.execute(
+            "SELECT twitch_name "
             "FROM user_data "
             "WHERE LOWER(twitch_name)=%s",
             params)
+        for _ in cursor:
+            duplicate_stream = True
 
-        for row in cursor:
-            if row[0] and not int(row[0]) == int(racer.discord_id):
-                already_registered = True
-                self._log_warning(
-                    'Error: User {0} tried to register twitch name {1}, but that name is already registered '
-                    'to {2}.'.format(racer.discord_name, racer.twitch_name, row[1]))
-            else:
-                params = (racer.discord_id, racer.discord_name, racer.twitch_name,
-                          racer.timezone, racer.twitch_name.lower(),)
-                cursor.execute(
-                    "UPDATE user_data "
-                    "SET discord_id=%s, discord_name=%s, twitch_name=%s, timezone=%s "
-                    "WHERE LOWER(twitch_name)=%s",
-                    params)
-                success = True
-
-        if not success and not already_registered:
-            params = (racer.discord_id, racer.discord_name, racer.timezone, racer.twitch_name,)
+        if not duplicate_stream:
+            params = (twitch_name, discord_member.id,)
             cursor.execute(
-                "INSERT INTO user_data (discord_id, discord_name, timezone, twitch_name) "
-                "VALUES (%s,%s,%s,%s)",
+                "UPDATE user_data "
+                "SET twitch_name=%s "
+                "WHERE discord_id=%s",
                 params)
-            success = True
+            cursor.execute(
+                "UPDATE user_data "
+                "SET rtmp_name=%s "
+                "WHERE discord_id=%s AND rtmp_name IS NULL",
+                params)
+            self._db_conn.commit()
 
-        self._db_conn.commit()
         self._close()
-        return success
+        return not duplicate_stream
 
-    def register_rtmp(self, discord_id, rtmp_name):
+    def register_rtmp(self, discord_member, rtmp_name):
+        self.register(discord_member)
+        duplicate_rtmp = False
+
         self._connect()
         cursor = self._db_conn.cursor()
-        params = (rtmp_name, discord_id,)
+        params = (rtmp_name,)
         cursor.execute(
-            "UPDATE user_data "
-            "SET rtmp_name=%s "
-            "WHERE discord_id=%s",
+            "SELECT rtmp_name "
+            "FROM user_data "
+            "WHERE LOWER(rtmp_name)=%s",
             params)
-        self._db_conn.commit()
-        self._close()
+        for _ in cursor:
+            duplicate_rtmp = True
 
-    def register_timezone(self, discord_id, timezone):
+        if not duplicate_rtmp:
+            params = (rtmp_name, discord_member.id,)
+            cursor.execute(
+                "UPDATE user_data "
+                "SET rtmp_name=%s "
+                "WHERE discord_id=%s",
+                params)
+            self._db_conn.commit()
+
+        self._close()
+        return not duplicate_rtmp
+
+    def register_timezone(self, discord_member, timezone):
+        self.register(discord_member)
+
         self._connect()
         cursor = self._db_conn.cursor()
-        params = (timezone, discord_id,)
+        params = (timezone, discord_member.id,)
         cursor.execute(
             "UPDATE user_data "
             "SET timezone=%s "

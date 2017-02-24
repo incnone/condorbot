@@ -5,35 +5,48 @@ import re
 import condortimestr
 import config
 
+
 class CondorRacer(object):
-    def __init__(self, twitch_name):
-        self.discord_id = None
+    def __init__(self, discord_id):
+        self.discord_id = int(discord_id)
         self.discord_name = None
-        self.twitch_name = twitch_name
-        self.rtmp_name = twitch_name
+        self.twitch_name = None
+        self.rtmp_name = None
         self.timezone = None
 
     def __eq__(self, other):
-        return self.twitch_name.lower() == other.twitch_name.lower()
+        return self.unique_name.lower() == other.unique_name.lower()
 
     @staticmethod
-    def _escaped(str):
+    def _escaped(s):
         for char in ['*', '-', '_']:
-            str = str.replace(char, '\\' + char)
-        return str
+            s = s.replace(char, '\\' + char)
+        return s
 
     @property
-    def infostr(self):
+    def infobox(self):
         if self.twitch_name == self.rtmp_name:
-            return '{0}. Twitch/RTMP: {1}; Timezone: {2}'.format(
-                self.discord_name, self.escaped_twitch_name, self.timezone)
+            return '```\n' \
+                   '{0}\n' \
+                   '  Twitch/RTMP: {1}\n' \
+                   '     Timezone: {2}```'.format(
+                    self.discord_name,
+                    self.escaped_rtmp_name,
+                    self.timezone)
         else:
-            return '{0}. Twitch: {1}; RTMP: {2}; Timezone: {3}'.format(
-                self.discord_name, self.escaped_twitch_name, self.escaped_rtmp_name, self.timezone)
+            return '```\n' \
+                   '{0}\n' \
+                   '    Twitch: {1}\n' \
+                   '      RTMP: {2}\n' \
+                   '  Timezone: {3}\n```'.format(
+                    self.discord_name,
+                    self.escaped_twitch_name,
+                    self.escaped_rtmp_name,
+                    self.timezone)
 
     @property
     def gsheet_regex(self):
-        return re.compile( r'(?i)^\s*' + re.escape(self.twitch_name) + r'\s*$' )
+        return re.compile( r'(?i)^\s*' + re.escape(self.rtmp_name) + r'\s*$' )
 
     @property
     def escaped_twitch_name(self):
@@ -43,8 +56,12 @@ class CondorRacer(object):
     def escaped_rtmp_name(self):
         return self._escaped(self.rtmp_name)
 
+    @property
+    def unique_name(self):
+        return self.rtmp_name
+
     def utc_to_local(self, utc_dt):
-        if not self.timezone in pytz.all_timezones:
+        if self.timezone not in pytz.all_timezones:
             return None
         local_tz = pytz.timezone(self.timezone)
 
@@ -54,7 +71,7 @@ class CondorRacer(object):
             return local_tz.normalize(pytz.utc.localize(utc_dt))
 
     def local_to_utc(self, local_dt):
-        if not self.timezone in pytz.all_timezones:
+        if self.timezone not in pytz.all_timezones:
             return None
         local_tz = pytz.timezone(self.timezone)
 
@@ -63,8 +80,9 @@ class CondorRacer(object):
         else:
             return pytz.utc.normalize(local_tz.localize(local_dt))
 
+
 class CondorMatch(object):
-    OFFSET_DATETIME = datetime.datetime(year=2016,month=1,day=1,tzinfo=pytz.utc)
+    OFFSET_DATETIME = datetime.datetime(year=2016, month=1, day=1, tzinfo=pytz.utc)
     
     FLAG_SCHEDULED = int(1) << 0
     FLAG_SCHEDULED_BY_R1 = int(1) << 1
@@ -77,6 +95,7 @@ class CondorMatch(object):
     FLAG_UNCONFIRMED_BY_R2 = int(1) << 8
     FLAG_BEST_OF = int(1) << 9
 
+    @staticmethod
     def notflag(flag):
         FULL_FLAG = (int(1) << 10) - 1
         return FULL_FLAG - flag
@@ -91,8 +110,8 @@ class CondorMatch(object):
 
     @property
     def channel_name(self):
-        name_1 = self.racer_1.twitch_name.lower()
-        name_2 = self.racer_2.twitch_name.lower()
+        name_1 = self.racer_1.unique_name.lower()
+        name_2 = self.racer_2.unique_name.lower()
         racer_name_list = sorted([name_1, name_2])
         return '{0}-{1}'.format(racer_name_list[0], racer_name_list[1])
 
@@ -138,11 +157,11 @@ class CondorMatch(object):
         self._time = CondorMatch.OFFSET_DATETIME + td
 
     def set_best_of(self, out_of_n):
-        self.flags = self.flags | CondorMatch.FLAG_BEST_OF
+        self.flags |= CondorMatch.FLAG_BEST_OF
         self._number_of_races = out_of_n
 
     def set_repeat(self, number_of_races):
-        self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_BEST_OF)
+        self.flags &= CondorMatch.notflag(CondorMatch.FLAG_BEST_OF)
         self._number_of_races = number_of_races
 
     def set_number_of_races(self, number_of_races):
@@ -176,7 +195,7 @@ class CondorMatch(object):
     def confirmed(self):
         return (CondorMatch.FLAG_CONFIRMED_BY_R1 & self.flags) and (CondorMatch.FLAG_CONFIRMED_BY_R2 & self.flags)
 
-    #returns the racer that scheduled this if possible
+    # returns the racer that scheduled this if possible
     @property
     def scheduled_by(self):
         if CondorMatch.FLAG_SCHEDULED_BY_R1 & self.flags:
@@ -194,7 +213,7 @@ class CondorMatch(object):
     def topic_str(self):
         topic = '``` \n'
         if self.played:
-            topic += 'The match is over.' # TODO result information            
+            topic += 'The match is over.'           # TODO result information
         elif self.scheduled or self.confirmed:
             if not self.time:
                 topic += 'Error: This match is marked as scheduled, but no time is stored.'
@@ -207,15 +226,15 @@ class CondorMatch(object):
                 elif self.scheduled:
                     topic += 'The following time has been suggested: {0}.\n'.format(utc_str)
 
-                topic += '   {0}\'s local time: {1}\n'.format(self.racer_1.twitch_name, racer_1_str)
-                topic += '   {0}\'s local time: {1}\n'.format(self.racer_2.twitch_name, racer_2_str)
+                topic += '   {0}\'s local time: {1}\n'.format(self.racer_1.unique_name, racer_1_str)
+                topic += '   {0}\'s local time: {1}\n'.format(self.racer_2.unique_name, racer_2_str)
 
                 if self.scheduled and not self.confirmed:
                     conf_racers = ''
                     if not self.is_confirmed_by(self.racer_1):
-                        conf_racers += self.racer_1.twitch_name + ', '
+                        conf_racers += self.racer_1.unique_name + ', '
                     if not self.is_confirmed_by(self.racer_2):
-                        conf_racers += self.racer_2.twitch_name + ', '
+                        conf_racers += self.racer_2.unique_name + ', '
                         
                     if conf_racers:
                         topic += 'Waiting on confirmation from: {0}'.format(conf_racers[:-2])
@@ -233,49 +252,53 @@ class CondorMatch(object):
         topic += '```'
         return topic
 
-    #returns True if the racer has already confirmed
+    # returns True if the racer has already confirmed
     def is_confirmed_by(self, racer):
-        if racer.twitch_name == self.racer_1.twitch_name:
+        if racer == self.racer_1:
             return self.flags & CondorMatch.FLAG_CONFIRMED_BY_R1
-        elif racer.twitch_name == self.racer_2.twitch_name:
+        elif racer == self.racer_2:
             return self.flags & CondorMatch.FLAG_CONFIRMED_BY_R2
         else:
             return False
 
-    def schedule(self, time, racer, unconfirm=True):
-        self.flags = self.flags | CondorMatch.FLAG_SCHEDULED
-        if racer and racer.twitch_name == self.racer_1.twitch_name:
-            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1) & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R2)) 
-        elif racer and racer.twitch_name == self.racer_2.twitch_name:
-            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R2) & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R1)) 
+    def schedule(self, time, racer):
+        self.flags |= CondorMatch.FLAG_SCHEDULED
+        if racer == self.racer_1:
+            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1) \
+                         & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R2))
+        elif racer == self.racer_2:
+            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R2) \
+                         & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R1))
 
         if time.tzinfo is not None and time.tzinfo.utcoffset(time) is not None:
             self._time = time.astimezone(pytz.utc)
         else:
             self._time = pytz.utc.localize(time)
 
-        self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1) & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
+        self.flags &= CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1) \
+            & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
 
     def confirm(self, racer):
-        if racer.twitch_name == self.racer_1.twitch_name:
-            self.flags = (self.flags | CondorMatch.FLAG_CONFIRMED_BY_R1) & CondorMatch.notflag(CondorMatch.FLAG_UNCONFIRMED_BY_R1)
-        elif racer.twitch_name == self.racer_2.twitch_name:
-            self.flags = (self.flags | CondorMatch.FLAG_CONFIRMED_BY_R2) & CondorMatch.notflag(CondorMatch.FLAG_UNCONFIRMED_BY_R2)        
+        if racer == self.racer_1:
+            self.flags = (self.flags | CondorMatch.FLAG_CONFIRMED_BY_R1) \
+                         & CondorMatch.notflag(CondorMatch.FLAG_UNCONFIRMED_BY_R1)
+        elif racer == self.racer_2:
+            self.flags = (self.flags | CondorMatch.FLAG_CONFIRMED_BY_R2) \
+                         & CondorMatch.notflag(CondorMatch.FLAG_UNCONFIRMED_BY_R2)
 
     def unconfirm(self, racer):
         if self.played:
             return
         
-        if racer.twitch_name == self.racer_1.twitch_name:
-            self.flags = self.flags | CondorMatch.FLAG_UNCONFIRMED_BY_R1
+        if racer == self.racer_1:
+            self.flags |= CondorMatch.FLAG_UNCONFIRMED_BY_R1
             if not self.confirmed:
-                self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1)
-        elif racer.twitch_name == self.racer_2.twitch_name:
-            self.flags = self.flags | CondorMatch.FLAG_UNCONFIRMED_BY_R2
+                self.flags &= CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R1)
+        elif racer == self.racer_2:
+            self.flags |= CondorMatch.FLAG_UNCONFIRMED_BY_R2
             if not self.confirmed:
-                self.flags = self.flags & CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
+                self.flags &= CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
                 
         if self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R1 and self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R2:
             self.flags = 0
             self._time = None
-            

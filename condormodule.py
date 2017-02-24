@@ -272,11 +272,28 @@ class CloseWeek(command.CommandType):
                     raise e        
 
 
+class Register(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'register')
+        self.help_text = 'Register your current discord name in the bot\'s database.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.necrobot.main_channel
+
+    @asyncio.coroutine
+    def _do_execute(self, command):
+        self._cm.condordb.register(command.author)
+        yield from self._cm.necrobot.client.send_message(
+            command.channel,
+            '{0}: Registered your current discord name.'.format(
+                command.author.mention))
+
+
 class RTMP(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'rtmp')
-        self.help_text = 'Register an RTMP stream. Usage is `.rtmp <rtmp_name>`, e.g., `.rtmp incnone`. (This is ' \
-                         'unnecessary if your RTMP name is the same as your twitch name.)'
+        self.help_text = 'Register an RTMP stream. Usage is `.rtmp <rtmp_name>`, e.g., `.rtmp incnone`.'
         self._cm = condor_module
 
     def recognized_channel(self, channel):
@@ -297,11 +314,18 @@ class RTMP(command.CommandType):
                     '{0}: Error: your RTMP name cannot contain the character /.'.format(
                         command.author.mention))
             else:
-                self._cm.condordb.register_rtmp(command.author.id, rtmp_name)
-                yield from self._cm.necrobot.client.send_message(
-                    command.channel,
-                    '{0}: Registered your RTMP as <{1}>'.format(
-                        command.author.mention, _escaped(rtmp_name)))
+                success = self._cm.condordb.register_rtmp(command.author, rtmp_name)
+                if success:
+                    yield from self._cm.necrobot.client.send_message(
+                        command.channel,
+                        '{0}: Registered your RTMP as `{1}`'.format(
+                            command.author.mention, _escaped(rtmp_name)))
+                else:
+                    yield from self._cm.necrobot.client.send_message(
+                        command.channel,
+                        '{0}: Unable to register the RTMP stream `{1}`, because that name is already '
+                        'registered to a different discord account.'.format(
+                            command.author.mention, _escaped(rtmp_name)))
 
 
 class Staff(command.CommandType):
@@ -319,6 +343,7 @@ class Staff(command.CommandType):
             'Alert: `.staff` called by {0} in channel {1}.'.format(command.author.mention, command.channel.mention))
         yield from self._cm.necrobot.client.send_message(command.channel,
             '{0}: Alerting CoNDOR Staff: {1}.'.format(command.author.mention, self._cm.necrobot.condor_staff))
+
 
 class Stream(command.CommandType):
     def __init__(self, condor_module):
@@ -340,24 +365,19 @@ class Stream(command.CommandType):
                 yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: your stream name cannot contain the character /. (Maybe you accidentally ' \
                                                                  'included the "twitch.tv/" part of your stream name?)'.format(command.author.mention))
             else:
-                racer = CondorRacer(twitch_name)
-                racer.discord_id = command.author.id
-                racer.discord_name = command.author.name
-                success = self._cm.condordb.register_racer(racer)
-                if not success:
-                    yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: unable to register your stream as <twitch.tv/{1}>, because that ' \
-                                                                     'stream is already registered to a different account.'.format(command.author.mention, _escaped(twitch_name)))                    
-                    return
-                
-                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Registered your stream as <twitch.tv/{1}>'.format(command.author.mention, _escaped(twitch_name)))
+                success = self._cm.condordb.register_twitch(command.author, twitch_name)
+                if success:
+                    yield from self._cm.necrobot.client.send_message(
+                        command.channel,
+                        '{0}: Registered your twitch as `twitch.tv/{1}`'.format(
+                            command.author.mention, _escaped(twitch_name)))
+                else:
+                    yield from self._cm.necrobot.client.send_message(
+                        command.channel,
+                        '{0}: Unable to register the twitch stream `twitch.tv/{1}`, because that name is already '
+                        'registered to a different discord account.'.format(
+                            command.author.mention, _escaped(twitch_name)))
 
-                #look for race channels with this racer, and unhide them if we find any
-                channel_ids = self._cm.condordb.find_channel_ids_with(racer)
-                for channel in self._cm.necrobot.server.channels:
-                    if int(channel.id) in channel_ids:
-                        read_permit = discord.Permissions.none()
-                        read_permit.read_messages = True
-                        yield from self._cm.necrobot.client.edit_channel_permissions(channel, command.author, allow=read_permit)
 
 class Suggest(command.CommandType):
     def __init__(self, condor_module):
@@ -472,12 +492,14 @@ class Suggest(command.CommandType):
                         yield from self._cm.necrobot.client.send_message(command.channel,
                             '{0}: A match time has been suggested; please confirm with `.confirm`. I also suggest you register a timezone (use `.timezone`), so I can convert to your local time.'.format(member.mention))  
 
+
 class Timezone(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'timezone')
         self.timezone_loc = 'https://github.com/incnone/condorbot/blob/master/data/tz_list.txt'
         self.help_text = 'Register a time zone with your account. Usage is `.timezone <zonename>`. See {0} for a ' \
-                        'list of recognized time zones; these strings should be input exactly as-is, e.g., `.timezone US/Eastern`.'.format(self.timezone_loc)
+                         'list of recognized time zones; these strings should be input exactly as-is, e.g., ' \
+                         '`.timezone US/Eastern`.'.format(self.timezone_loc)
         self._cm = condor_module
 
     def recognized_channel(self, channel):
@@ -485,17 +507,24 @@ class Timezone(command.CommandType):
 
     @asyncio.coroutine
     def _do_execute(self, command):
-        if not self._cm.condordb.is_registered_user(command.author.id):
-            yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Please register a twitch stream first (use `.stream <twitchname>`).'.format(command.author.mention))
-        elif len(command.args) != 1:
-            yield from self._cm.necrobot.client.send_message(command.channel, '{0}: I was unable to parse your timezone because you gave too many arguments. See {1} for a list of timezones.'.format(command.author.mention, self.timezone_loc))
+        if len(command.args) != 1:
+            yield from self._cm.necrobot.client.send_message(
+                command.channel,
+                '{0}: I was unable to parse your timezone because you gave too many arguments. '
+                'See {1} for a list of timezones.'.format(command.author.mention, self.timezone_loc))
         else:
             tz_name = command.args[0]
             if tz_name in pytz.all_timezones:
-                self._cm.condordb.register_timezone(command.author.id, tz_name)
-                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Timezone set as {1}.'.format(command.author.mention, tz_name))
+                self._cm.condordb.register_timezone(command.author, tz_name)
+                yield from self._cm.necrobot.client.send_message(
+                    command.channel,
+                    '{0}: Timezone set as {1}.'.format(command.author.mention, tz_name))
             else:
-                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: I was unable to parse your timezone. See {1} for a list of timezones.'.format(command.author.mention, self.timezone_loc))
+                yield from self._cm.necrobot.client.send_message(
+                    command.channel,
+                    '{0}: I was unable to parse your timezone. See {1} for a list of timezones.'.format(
+                        command.author.mention, self.timezone_loc))
+
 
 class Uncawmentate(command.CommandType):
     def __init__(self, condor_module):
@@ -600,6 +629,7 @@ class Unconfirm(command.CommandType):
 
         yield from self._cm.update_match_channel(match)
 
+
 class UserInfo(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'userinfo')
@@ -611,22 +641,28 @@ class UserInfo(command.CommandType):
 
     @asyncio.coroutine
     def _do_execute(self, command):
-        #find the user's discord id
-        racer = None
+        # find the user's discord id
         if len(command.args) == 0:
             racer = self._cm.condordb.get_from_discord_id(command.author.id)
             if not racer:
-                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: You haven\'t registered; use `.stream <twitchname>` to register.'.format(command.author.mention))                
+                yield from self._cm.necrobot.client.send_message(
+                    command.channel,
+                    '{0}: You haven\'t registered; use `.register` to register.'.format(
+                        command.author.mention))
         elif len(command.args) == 1:
             racer = self._cm.condordb.get_from_discord_name(command.args[0])
             if not racer:
-                yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: User {1} isn\'t registered.'.format(command.author.mention, command.args[0]))                                
+                yield from self._cm.necrobot.client.send_message(
+                    command.channel, '{0}: Error: User {1} isn\'t registered.'.format(
+                        command.author.mention, command.args[0]))
         else:
-            yield from self._cm.necrobot.client.send_message(command.channel, '{0}: Error: Too many arguments for `.userinfo`.'.format(command.author.mention))
+            yield from self._cm.necrobot.client.send_message(
+                command.channel, '{0}: Error: Too many arguments for `.userinfo`.'.format(command.author.mention))
             return
 
         if racer:
-            yield from self._cm.necrobot.client.send_message(command.channel, 'User info: {0}.'.format(racer.infostr))
+            yield from self._cm.necrobot.client.send_message(command.channel, racer.infobox)
+
 
 class CloseAllRaceChannels(command.CommandType):
     def __init__(self, condor_module):
@@ -649,6 +685,7 @@ class CloseAllRaceChannels(command.CommandType):
             self._cm.condordb.delete_channel(channel.id)
             yield from self._cm.necrobot.client.delete_channel(channel)
 
+
 class Remind(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'remind')
@@ -666,7 +703,8 @@ class Remind(command.CommandType):
                 yield from self._cm.remind_all(text, lambda m: not m.confirmed)
                 yield from self._cm.necrobot.client.send_message(command.channel,
                     'Reminders sent.')
-                                                                       
+
+
 class ForceBeginMatch(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forcebeginmatch')
@@ -693,7 +731,8 @@ class ForceBeginMatch(command.CommandType):
                 yield from self._cm.make_race_room(match)
                 yield from self._cm.update_match_channel(match)
                 yield from self._cm.update_schedule_channel()
-                
+
+
 class ForceConfirm(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forceconfirm')
@@ -732,6 +771,7 @@ class ForceConfirm(command.CommandType):
             yield from self._cm.update_match_channel(match)
             yield from self._cm.update_schedule_channel()
 
+
 class ForceReboot(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forcereboot')
@@ -752,6 +792,7 @@ class ForceReboot(command.CommandType):
             else:
                 yield from self._cm.reboot_race_room(match)
                 yield from self._cm.update_match_channel(match)
+
 
 class ForceRescheduleUTC(command.CommandType):
     def __init__(self, condor_module):
@@ -829,6 +870,7 @@ class ForceRescheduleUTC(command.CommandType):
                             yield from self._cm.necrobot.client.send_message(command.channel,
                                 '{0}: A match time has been suggested; please confirm with `.confirm`. I also suggest you register a timezone (use `.timezone`), so I can convert to your local time.'.format(member.mention))  
 
+
 class ForceUpdate(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forceupdate')
@@ -864,6 +906,7 @@ class ForceUpdate(command.CommandType):
             yield from self._cm.update_schedule_channel()
             yield from self._cm.necrobot.client.send_message(command.channel, 'Updated.')
 
+
 class ForceUnschedule(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forceunschedule')
@@ -896,6 +939,7 @@ class ForceUnschedule(command.CommandType):
                     'The match has been unscheduled. Please `.suggest` a new time when one has been agreed upon.')
 
             yield from self._cm.update_match_channel(match)    
+
 
 class ForceTransferAccount(command.CommandType):
     def __init__(self, condor_module):
@@ -935,6 +979,7 @@ class ForceTransferAccount(command.CommandType):
             self._cm.condordb.transfer_racer_to(from_racer.twitch_name, to_member)
             yield from self._cm.client.send_message(command.channel, '{0}: Transfered racer account {1} to member {2}.'.format(command.author.mention, from_racer.escaped_twitch_name, to_member.mention))
 
+
 class CondorModule(command.Module):
     def __init__(self, necrobot):
         command.Module.__init__(self, necrobot)
@@ -950,6 +995,7 @@ class CondorModule(command.Module):
                               Confirm(self),
                               CloseWeek(self),
                               MakeWeek(self),
+                              Register(self),
                               RTMP(self),
                               Staff(self),
                               Stream(self),
