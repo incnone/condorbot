@@ -1199,7 +1199,7 @@ class CondorModule(command.Module):
     def save_and_delete(self, channel):
         logs = yield from self.client.logs_from(channel, 5000)
         messages = []
-        for message in logs:
+        for message in logs:  # TODO update to Py3.5
             messages.insert(0, message)
 
         outfile = codecs.open('logs/{0}.log'.format(channel.name), 'w', 'utf-8')

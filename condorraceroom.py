@@ -5,20 +5,16 @@ import asyncio
 import command
 import config
 import datetime
-import discord
-import level
 import racetime
 import seedgen
-import textwrap
-import time
 
-from condormatch import CondorMatch
 from race import Race
-from racer import Racer
 from raceinfo import RaceInfo
 from events import Events
 
 SUFFIXES = {1: 'st', 2: 'nd', 3: 'rd'}
+
+
 def ordinal(num):
     if 10 <= num % 100 <= 20:
         suffix = 'th'
@@ -26,15 +22,18 @@ def ordinal(num):
         suffix = SUFFIXES.get(num % 10, 'th')
     return str(num) + suffix
 
+
 class Here(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'here')
-        self.help_text = 'Lets the bot know you\'re here for the race. When it\'s time for the race, use `.ready` to indicate you are ready to begin.'
+        self.help_text = 'Lets the bot know you\'re here for the race. When it\'s time for the race, use `.ready` ' \
+                         'to indicate you are ready to begin.'
         self._room = race_room
 
     @asyncio.coroutine
     def _do_execute(self, command):
         yield from self._room.enter_racer(command.author)
+
 
 class Ready(command.CommandType):
     def __init__(self, race_room):
@@ -43,25 +42,27 @@ class Ready(command.CommandType):
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
+    def _do_execute(self, cmd):
         if not self._room.race or not self._room.race.is_before_race:
             return
         
-        racer = self._room.race.get_racer(command.author)
+        racer = self._room.race.get_racer(cmd.author)
         if racer:
-            success = yield from self._room.race.ready_racer(racer)    #success is True if the racer was unready and now is ready
+            success = yield from self._room.race.ready_racer(racer)   # True if the racer was unready and now is ready
             if success:
                 if len(self._room.race.racers) == 1 and config.REQUIRE_AT_LEAST_TWO_FOR_RACE:
                     yield from self._room.write('Waiting on at least one other person to join the race.')
                 else:
-                    yield from self._room.write('{0} is ready! {1} remaining.'.format(command.author.mention, self._room.race.num_not_ready))
+                    yield from self._room.write('{0} is ready! {1} remaining.'.format(
+                        cmd.author.mention, self._room.race.num_not_ready))
 
                 yield from self._room.begin_if_ready()
 
             elif racer.is_ready:
-                yield from self._room.write('{0} is already ready!'.format(command.author.mention))
+                yield from self._room.write('{0} is already ready!'.format(cmd.author.mention))
         else:
-            yield from self._room.write('{}: Please type `.here` before readying.'.format(command.author.mention))
+            yield from self._room.write('{}: Please type `.here` before readying.'.format(cmd.author.mention))
+               
                     
 class Unready(command.CommandType):
     def __init__(self, race_room):
@@ -83,6 +84,7 @@ class Unready(command.CommandType):
         else:
             yield from self._room.write('{}: Warning: You have not yet said you\'re `.here` for the race.'.format(command.author.mention))
 
+
 class Done(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'done', 'finish', 'd')
@@ -101,6 +103,7 @@ class Done(command.CommandType):
                 num_finished = self._room.race.num_finished
                 yield from self._room.write('{0} has finished in {1} place with a time of {2}.'.format(command.author.mention, ordinal(num_finished), racer.time_str))
 
+
 class Undone(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'undone', 'unfinish')
@@ -117,6 +120,7 @@ class Undone(command.CommandType):
         if success: 
             yield from self._room.write('{} is no longer done and continues to race.'.format(command.author.mention))
 
+
 class Cancel(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'cancel')
@@ -129,80 +133,6 @@ class Cancel(command.CommandType):
         if not success:
             yield from self._room.write('{0} wishes to cancel the race. Both racers must type `.cancel` for the race to be cancelled.'.format(command.author.mention))
 
-##class Forfeit(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'forfeit', 'quit')
-##        self.help_text = 'Forfeits from the race. You may use `.quit` instead of `.forfeit` if preferred.'
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if not self._room.race or self._room.race.is_before_race:
-##            return
-##
-##        success = yield from self._room.race.forfeit_racer(self._room.race.get_racer(command.author)) #success is True if the racer was racing and is now forfeit
-##        if success:
-##            yield from self._room.write('{} has forfeit the race.'.format(command.author.mention))
-##
-##        if len(command.args) > 0:
-##            racer = self._room.race.get_racer(command.author)
-##            if racer:
-##                cut_length = len(command.command) + len(config.BOT_COMMAND_PREFIX) + 1
-##                end_length = 255 + cut_length
-##                racer.add_comment(command.message.content[cut_length:end_length])
-##                asyncio.ensure_future(self._room.update_leaderboard())            
-##
-##class Unforfeit(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'unforfeit', 'unquit')
-##        self.help_text = 'Undoes an earlier `.forfeit`.'
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if not self._room.race or self._room.race.is_before_race:
-##            return
-##
-##        success = yield from self._room.race.unforfeit_racer(self._room.race.get_racer(command.author)) #success is true if the racer was forfeit and now is not
-##        #NB: success might be False even in reasonable-use contexts, e.g., if the race became finalized
-##        if success: 
-##            yield from self._room.write('{} is no longer forfeit and continues to race.'.format(command.author.mention))
-                    
-##class Comment(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'comment')
-##        self.help_text = 'Adds text as a comment to your race.'
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if not self._room.race or self._room.race.is_before_race:
-##            return
-##
-##        racer = self._room.race.get_racer(command.author)
-##        if racer:
-##            cut_length = len(command.command) + len(config.BOT_COMMAND_PREFIX) + 1
-##            end_length = 255 + cut_length
-##            racer.add_comment(command.message.content[cut_length:end_length])
-##            asyncio.ensure_future(self._room.update_leaderboard())
-##
-##class Igt(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'igt')
-##        self.help_text = 'Adds an in-game-time to your race, e.g. `{} 12:34.56.`'.format(self.mention)
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if not self._room.race or self._room.race.is_before_race:
-##            return
-##
-##        if len(command.args) == 1:
-##            igt = racetime.from_str(command.args[0])
-##            racer = self._room.race.get_racer(command.author)
-##            if igt != -1 and racer and racer.is_done_racing:
-##                racer.igt = igt
-##                asyncio.ensure_future(self._room.update_leaderboard())  
 
 class Contest(command.CommandType):
     def __init__(self, race_room):
@@ -222,7 +152,8 @@ class Contest(command.CommandType):
             self._room.condordb.set_contested(self._room.match, race_to_contest, command.author)
             yield from self._room.write('{0} has contested the result of race number {1}.'.format(command.author.mention, race_to_contest))
             yield from self._room.client.send_message(self._room.necrobot.notifications_channel, '{0} has contested the result of race number {1} in the match {2}.'.format(command.author.mention, race_to_contest, command.channel.mention))            
-        
+
+
 class Time(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'time')
@@ -238,6 +169,7 @@ class Time(command.CommandType):
         else:
             yield from self._room.write('The current race time is {}.'.format(self._room.race.current_time_str))
 
+
 class ForceCancel(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcecancel')
@@ -250,17 +182,6 @@ class ForceCancel(command.CommandType):
         if self._room.race and self._room.is_race_admin(command.author):
             yield from self._room.cancel_race()
 
-##class ForceClose(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'forceclose')
-##        self.help_text = 'Cancel the race, and close the channel.'
-##        self.suppress_help = True
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if self._room.race and self._room.is_race_admin(command.author):
-##            yield from self._room.close()
 
 class ForceForfeit(command.CommandType):
     def __init__(self, race_room):
@@ -277,19 +198,6 @@ class ForceForfeit(command.CommandType):
                     if racer.name.lower() == name.lower():
                         asyncio.ensure_future(self._room.race.forfeit_racer(racer))
 
-##class ForceForfeitAll(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'forceforfeitall')
-##        self.help_text = 'Force all unfinished racers to forfeit the race.'
-##        self.suppress_help = True
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if self._room.race and self._room.is_race_admin(command.author) and not self._room.race.is_before_race:
-##            for racer in self._room.race.racers.values():
-##                if racer.is_racing:
-##                    asyncio.ensure_future(self._room.race.forfeit_racer(racer))
 
 class ForceChangeWinner(command.CommandType):
     def __init__(self, race_room):
@@ -322,6 +230,7 @@ class ForceChangeWinner(command.CommandType):
             self._room.condordb.change_winner(self._room.match, race_int, winner_int)
             yield from self._room.write('Recorded {0} as the winner of race {1}.'.format(command.args[1], race_int))
             yield from self._room.update_leaderboard()
+
 
 class ForceRecordRace(command.CommandType):
     def __init__(self, race_room):
@@ -383,7 +292,8 @@ class ForceRecordRace(command.CommandType):
 
             if self._room.played_all_races:
                 yield from self._room.record_match()
-            
+
+
 class ForceNewRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcenewrace')
@@ -398,6 +308,7 @@ class ForceNewRace(command.CommandType):
                 yield from self._room.record_race(cancelled=True)
             else:
                 yield from self._room.begin_new_race()
+
 
 class ForceCancelRace(command.CommandType):
     def __init__(self, race_room):
@@ -426,6 +337,7 @@ class ForceCancelRace(command.CommandType):
             else:
                 self._room.write('I do not believe there have been {0} finished races.'.format(race_number))
 
+
 class ForceRecordMatch(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcerecordmatch')
@@ -437,28 +349,6 @@ class ForceRecordMatch(command.CommandType):
         if self._room.is_race_admin(command.author):
             yield from self._room.record_match()
 
-##class ForceMatchDraw(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'forcematchdraw')
-##        self.help_text = 'Force the match to be recorded as an intentional draw.'
-            ## TODO
-                        
-##class Kick(command.CommandType):
-##    def __init__(self, race_room):
-##        command.CommandType.__init__(self, 'kick')
-##        self.help_text = 'Remove a racer from the race. (They can still re-enter with `.enter`.'
-##        self.suppress_help = True
-##        self._room = race_room
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if self._room.race and self._room.is_race_admin(command.author):
-##            names_to_kick = [n.lower() for n in command.args]
-##            for racer in self._room.race.racers.values():
-##                if racer.name.lower() in names_to_kick:
-##                    success = yield from self._room.race.unenter_racer(racer)
-##                    if success:
-##                        yield from self._room.write('Kicked {} from the race.'.format(racer.name))
                                 
 class RaceRoom(command.Module):
 
@@ -475,18 +365,19 @@ class RaceRoom(command.Module):
         return to_return
 
     def __init__(self, condor_module, condor_match, race_channel):
-        self.channel = race_channel                                 #The channel in which this race is taking place
-        self.is_closed = False                                      #True if room has been closed
+        command.Module.__init__(self, condor_module.necrobot)
+        self.channel = race_channel                                 # The channel in which this race is taking place
+        self.is_closed = False                                      # True if room has been closed
         self.match = condor_match
 
         self.events = Events()
 
-        self.race = None                                            #The current race
-        self.recorded_race = False                                  #Whether the current race has been recorded
+        self.race = None                                            # The current race
+        self.recorded_race = False                                  # Whether the current race has been recorded
 
-        self.entered_racers = []                                    #Racers that have typed .here in this channel
+        self.entered_racers = []                                    # Racers that have typed .here in this channel
         self.before_races = True
-        self.cancelling_racers = []                                 #Racers that have typed .cancel
+        self.cancelling_racers = []                                 # Racers that have typed .cancel
 
         self._cm = condor_module           
 
@@ -497,22 +388,15 @@ class RaceRoom(command.Module):
                               Done(self),
                               Undone(self),
                               Cancel(self),
-                              #Forfeit(self),
-                              #Unforfeit(self),
-                              #Comment(self),
-                              #Igt(self),
                               Time(self),
                               Contest(self),
                               ForceCancel(self),
                               ForceChangeWinner(self),
-                              #ForceClose(self),
                               ForceForfeit(self),
-                              #ForceForfeitAll(self),
                               ForceRecordRace(self),
                               ForceNewRace(self),
                               ForceCancelRace(self),
                               ForceRecordMatch(self),
-                              #Kick(self),
                               ]
 
     @property
@@ -531,7 +415,7 @@ class RaceRoom(command.Module):
     def condordb(self):
         return self._cm.condordb
 
-    #True if the user has admin permissions for this race
+    # True if the user has admin permissions for this race
     def is_race_admin(self, member):
         admin_roles = self._cm.necrobot.admin_roles
         for role in member.roles:
@@ -560,7 +444,7 @@ class RaceRoom(command.Module):
     @asyncio.coroutine
     def wants_to_cancel(self, member):
         for racer in self.match.racers:
-            if int(racer.discord_id) == int(member.id) and not racer in self.cancelling_racers:
+            if int(racer.discord_id) == int(member.id) and racer not in self.cancelling_racers:
                 self.cancelling_racers.append(racer)
 
         if len(self.cancelling_racers) == 2:
@@ -584,9 +468,8 @@ class RaceRoom(command.Module):
                 self.condordb.cancel_race(self.match, race_number)
                 yield from self.write('The previous race was cancelled.'.format(race_number))
                 yield from self.update_leaderboard()                  
-                
 
-    #Updates the leaderboard
+    # Updates the leaderboard
     @asyncio.coroutine
     def update_leaderboard(self):
         if self.race or self.match.time_until_match.total_seconds() < 0:
@@ -747,10 +630,7 @@ class RaceRoom(command.Module):
         if not self.race:
             return 0
 
-        if self.race.is_before_race:
-            return self.race_number - 1
-        else:
-            return self.race_number
+        return int(self._cm.condordb.largest_recorded_race_number(self.match))
 
     # Begins the race if ready. (Writes a message if all racers are ready but an admin is not.)
     # Returns true on success
@@ -830,7 +710,7 @@ class RaceRoom(command.Module):
                                   'look into your race.')
 
             if self.played_all_races:
-                #Send match ending event if all races have been played
+                # Send match ending event if all races have been played
                 self.events.matchend(self.match.racer_1.twitch_name, self.match.racer_2.twitch_name)
                 yield from self.record_match()
             else:
