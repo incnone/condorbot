@@ -31,7 +31,7 @@ class CondorRacer(object):
                    '  Twitch/RTMP: {1}\n' \
                    '     Timezone: {2}```'.format(
                     self.discord_name,
-                    self.escaped_rtmp_name,
+                    self.rtmp_name,
                     self.timezone)
         else:
             return '```\n' \
@@ -40,8 +40,8 @@ class CondorRacer(object):
                    '      RTMP: {2}\n' \
                    '  Timezone: {3}\n```'.format(
                     self.discord_name,
-                    self.escaped_twitch_name,
-                    self.escaped_rtmp_name,
+                    self.twitch_name,
+                    self.rtmp_name,
                     self.timezone)
 
     @property
