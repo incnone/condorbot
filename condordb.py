@@ -120,7 +120,7 @@ class CondorDB(object):
         self._close()
         return to_return
 
-    def get_from_twitch_name(self, twitch_name, register=False):
+    def get_from_twitch_name(self, twitch_name):
         to_return = None
         self._connect()
         cursor = self._db_conn.cursor()
@@ -134,17 +134,36 @@ class CondorDB(object):
             to_return = CondorDB._get_racer_from_row(row)
 
         if to_return is None:
+            self._log_warning('Couldn\'t find twitch name <{}>.'.format(twitch_name))
+
+        self._close()
+        return to_return
+
+    def get_from_rtmp_name(self, rtmp_name, register=False):
+        to_return = None
+        self._connect()
+        cursor = self._db_conn.cursor()
+        params = (rtmp_name.lower(),)
+        cursor.execute(
+            "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+            "FROM user_data "
+            "WHERE LOWER(rtmp_name)=%s",
+            params)
+        for row in cursor:
+            to_return = CondorDB._get_racer_from_row(row)
+
+        if to_return is None:
             if register:
-                params = (twitch_name,)
+                params = (rtmp_name,)
                 cursor.execute(
-                    "INSERT INTO user_data (twitch_name) "
+                    "INSERT INTO user_data (rtmp_name) "
                     "VALUES (%s)",
                     params)
                 self._db_conn.commit()
                 self._close()
-                return self.get_from_twitch_name(twitch_name, False)
+                return self.get_from_rtmp_name(rtmp_name, False)
             else:
-                self._log_warning('Couldn\'t find twitch name <{}>.'.format(twitch_name))
+                self._log_warning('Couldn\'t find RTMP name <{}>.'.format(rtmp_name))
 
         self._close()
         return to_return

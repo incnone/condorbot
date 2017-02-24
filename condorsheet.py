@@ -113,8 +113,8 @@ class CondorSheet(object):
             racers = wks.range('{0}:{1}'.format(ul_addr, lr_addr))
 
             for cell in grouper(racers, 3, None):
-                racer_1 = self._db.get_from_twitch_name(cell[1].value.rstrip(' '), register=True)
-                racer_2 = self._db.get_from_twitch_name(cell[2].value.rstrip(' '), register=True)
+                racer_1 = self._db.get_from_rtmp_name(cell[1].value.rstrip(' '), register=True)
+                racer_2 = self._db.get_from_rtmp_name(cell[2].value.rstrip(' '), register=True)
                 if racer_1 and racer_2:
                     new_match = CondorMatch(racer_1, racer_2, week)
                     self._set_best_of_info(new_match, cell[0].value.rstrip(' '))

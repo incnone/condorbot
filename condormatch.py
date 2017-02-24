@@ -60,6 +60,10 @@ class CondorRacer(object):
     def unique_name(self):
         return self.rtmp_name
 
+    @property
+    def escaped_unique_name(self):
+        return self.escaped_rtmp_name
+
     def utc_to_local(self, utc_dt):
         if self.timezone not in pytz.all_timezones:
             return None
