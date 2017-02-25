@@ -408,11 +408,7 @@ class RaceRoom(command.Module):
 
     @property
     def client(self):
-        return self._cm.necrobot.client
-
-    @property
-    def necrobot(self):
-        return self._cm.necrobot
+        return self.necrobot.client
 
     @property
     def condordb(self):
@@ -434,11 +430,11 @@ class RaceRoom(command.Module):
 
     # Write text to the raceroom. Return a Message for the text written
     async def write(self, text):
-        return self.client.send_message(self.channel, text)
+        return await self.client.send_message(self.channel, text)
 
     # Write text to the bot_notifications channel.
     async def alert_staff(self, text):
-        return self.client.send_message(self._cm.necrobot.notifications_channel, text)
+        return await self.client.send_message(self._cm.necrobot.notifications_channel, text)
 
     # Register a racer as wanting to cancel
     async def wants_to_cancel(self, member):
@@ -469,6 +465,8 @@ class RaceRoom(command.Module):
 
     # Updates the leaderboard
     async def update_leaderboard(self):
+        return
+
         if self.race or self.match.time_until_match.total_seconds() < 0:
             topic = '``` \n'
             topic += 'Necrodancer World Cup Match (Cadence Seeded)\n'
@@ -570,6 +568,7 @@ class RaceRoom(command.Module):
 
             # this is done at the alert_staff_warning, unless this function was called after the alert_staff_warning, 
             # in which case do it immediately
+
             if not self.race:
                 await self.alert_racers()            
                 for racer in self.match.racers:
@@ -600,7 +599,7 @@ class RaceRoom(command.Module):
         self.race = Race(self, RaceRoom.get_new_raceinfo(), self._cm.condordb)
         await self.race.initialize()
         self.recorded_race = False
-        
+
         for racer in self.match.racers:
             racer_as_member = self._cm.necrobot.find_member_with_id(racer.discord_id)
             if racer_as_member:
@@ -620,7 +619,7 @@ class RaceRoom(command.Module):
             race_str = 'second'
         elif race_number == int(3):
             race_str = 'third'
-            
+
         await self.write(
             'Please input the seed ({1}) and type `.ready` when you are ready for the {0} race. '
             'When both racers `.ready`, the race will begin.'.format(race_str, self.race.race_info.seed))

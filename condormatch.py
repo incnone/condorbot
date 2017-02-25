@@ -270,12 +270,13 @@ class CondorMatch(object):
 
     def schedule(self, time, racer):
         self.flags |= CondorMatch.FLAG_SCHEDULED
-        if racer == self.racer_1:
-            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1) \
-                         & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R2))
-        elif racer == self.racer_2:
-            self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R2) \
-                         & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R1))
+        if racer is not None:
+            if self.racer_1 is not None and racer == self.racer_1:
+                self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R1) \
+                             & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R2))
+            elif self.racer_2 is not None and racer == self.racer_2:
+                self.flags = (self.flags | CondorMatch.FLAG_SCHEDULED_BY_R2) \
+                             & (CondorMatch.notflag(CondorMatch.FLAG_SCHEDULED_BY_R1))
 
         if time.tzinfo is not None and time.tzinfo.utcoffset(time) is not None:
             self._time = time.astimezone(pytz.utc)

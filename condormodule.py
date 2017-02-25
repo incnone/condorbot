@@ -12,6 +12,7 @@ import condortimestr
 import config
 
 from condordb import CondorDB
+from condormatch import CondorRacer
 from condorraceroom import RaceRoom
 from condorsheet import CondorSheet
 from events import Events
@@ -313,38 +314,64 @@ class Register(command.CommandType):
 class RTMP(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'rtmp')
-        self.help_text = 'Register an RTMP stream. Usage is `.rtmp <rtmp_name>`, e.g., `.rtmp incnone`.'
+        self.help_text = 'Register an RTMP stream. Usage is `.rtmp <discord_name> <rtmp_name>`, ' \
+                         'e.g., `.rtmp mac macRTMP`. Discord name should be enclosed in quotes if it contains a space.'
         self._cm = condor_module
 
     def recognized_channel(self, channel):
         return channel == self._cm.necrobot.main_channel
 
     async def _do_execute(self, cmd):
-        if len(cmd.args) != 1:
+        if not self._cm.necrobot.is_admin(cmd.author):
+            return
+
+        if len(cmd.args) != 2:
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
-                '{0}: I was unable to parse your RTMP name because you gave too many arguments. '
-                'Use `.rtmp <rtmp_name>`.'.format(cmd.author.mention))
+                'I was unable to parse your RTMP command because you gave the wrong number of arguments. '
+                'Use `.rtmp <discord_name> <rtmp_name>`.')
+            return
+
+        discord_name = cmd.args[0]
+        # Find the discord memeber
+        discord_members = self._cm.necrobot.find_members(discord_name)
+        if len(discord_members) == 0:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Error: Couldn\'t find any users with username <{0}>. '
+                'Note this is case-sensitive.'.format(discord_name))
+            return
+        elif len(discord_members) == 2:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Error: Found several users with username <{0}>. '
+                'I can\'t handle this; contact incnone and make him fix me.'.format(discord_name))
+            return
+
+        # Register in the database
+        discord_member = discord_members[0]
+        rtmp_name = cmd.args[1]
+
+        success = self._cm.condordb.register_rtmp(discord_member, rtmp_name)
+        if success:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Registered RTMP for user {0} as `{1}`.'.format(discord_member.name, rtmp_name))
         else:
-            rtmp_name = cmd.args[0]
-            if '/' in rtmp_name:
-                await self._cm.necrobot.client.send_message(
-                    cmd.channel,
-                    '{0}: Error: your RTMP name cannot contain the character /.'.format(
-                        cmd.author.mention))
-            else:
-                success = self._cm.condordb.register_rtmp(cmd.author, rtmp_name)
-                if success:
-                    await self._cm.necrobot.client.send_message(
-                        cmd.channel,
-                        '{0}: Registered your RTMP as `{1}`'.format(
-                            cmd.author.mention, rtmp_name))
-                else:
-                    await self._cm.necrobot.client.send_message(
-                        cmd.channel,
-                        '{0}: Unable to register the RTMP stream `{1}`, because that name is already '
-                        'registered to a different discord account.'.format(
-                            cmd.author.mention, rtmp_name))
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Unable to register the RTMP stream `{0}`, because that name is already '
+                'registered to a different discord account.'.format(rtmp_name))
+
+        # Set channel permissions
+        member_as_condor_racer = CondorRacer(discord_member.id)
+        channel_ids = self._cm.condordb.find_channel_ids_with(member_as_condor_racer)
+        for channel_id in channel_ids:
+            channel = self._cm.necrobot.find_channel_with_id(channel_id)
+            if channel is not None:
+                permit_read = discord.PermissionOverwrite()
+                permit_read.read_messages = True
+                await self._cm.necrobot.client.edit_channel_permissions(channel, discord_member, permit_read)
 
 
 class Staff(command.CommandType):
@@ -1339,13 +1366,13 @@ class CondorModule(command.Module):
             
         schedule_text += '```'
 
-        async for msg in self.necrobot.client.logs_from(self.necrobot.schedule_channel):
-            if (msg.author.name == 'condorbot' or msg.author.name == 'condorbot_alpha') \
-                    and msg.content.startswith('```'):  # hack for now
-                await self.necrobot.client.edit_message(msg, schedule_text)
-                return
-
-        await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
+        # async for msg in self.necrobot.client.logs_from(self.necrobot.schedule_channel):
+        #     if (msg.author.name == 'condorbot' or msg.author.name == 'condorbot_alpha') \
+        #             and msg.content.startswith('```'):  # hack for now
+        #         await self.necrobot.client.edit_message(msg, schedule_text)
+        #         return
+        #
+        # await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
             
     async def post_match_alert(self, match):
         cawmentator = await self.condorsheet.get_cawmentary(match)

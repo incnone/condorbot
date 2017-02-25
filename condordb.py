@@ -349,6 +349,34 @@ class CondorDB(object):
         finally:
             self._close()
 
+    def re_register_rtmp(self, discord_member, rtmp_name):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+            params = (rtmp_name,)
+            cursor.execute(
+                "DELETE FROM user_data "
+                "WHERE rtmp_name=%s AND discord_id IS NULL",
+                params)
+
+            cursor.execute(
+                "SELECT FROM user_data "
+                "WHERE rtmp_name=%s",
+                params)
+            for _ in cursor:
+                return False
+
+            params = (rtmp_name, discord_member.id)
+            cursor.execute(
+                "UPDATE user_data "
+                "SET rtmp_name=%s "
+                "WHERE discord_id=%s",
+                params)
+
+            return True
+        finally:
+            self._close()
+
     def register_rtmp(self, discord_member, rtmp_name):
         try:
             self._connect()
@@ -796,7 +824,7 @@ class CondorDB(object):
 
             return num_wins
         finally:
-            self.close()
+            self._close()
 
     def largest_recorded_race_number(self, match):
         try:

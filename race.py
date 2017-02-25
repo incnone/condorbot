@@ -326,7 +326,7 @@ class Race(object):
     # Puts the given Racer in the 'ready' state
     async def ready_racer(self, racer):
         if racer.ready():
-            asyncio.ensure_future(self.room.update_leaderboard())
+            # asyncio.ensure_future(self.room.update_leaderboard())
             return True
         else:
             return False
