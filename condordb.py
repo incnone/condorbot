@@ -252,7 +252,6 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            print('deleting channel {}'.format(channel_id))
             params = (channel_id,)
             cursor.execute(
                 "DELETE FROM channel_data "
@@ -353,25 +352,35 @@ class CondorDB(object):
         try:
             self._connect()
             cursor = self._db_conn.cursor()
-            params = (rtmp_name,)
-            cursor.execute(
-                "DELETE FROM user_data "
-                "WHERE rtmp_name=%s AND discord_id IS NULL",
-                params)
 
+            params = (rtmp_name,)
             cursor.execute(
                 "SELECT rtmp_name "
                 "FROM user_data "
-                "WHERE rtmp_name=%s",
+                "WHERE rtmp_name=%s AND discord_id IS NULL",
                 params)
+
+            found = False
             for _ in cursor:
+                found = True
+            if not found:
                 return False
 
-            params = (rtmp_name, discord_member.id)
+            racer = self.get_from_discord_id(discord_member.id)
+            if racer is None:
+                return False
+
+            params = (discord_member.id,)
+            cursor.execute(
+                "DELETE FROM user_data "
+                "WHERE discord_id=%s",
+                params)
+
+            params = (racer.discord_id, racer.discord_name, racer.twitch_name, racer.timezone, rtmp_name)
             cursor.execute(
                 "UPDATE user_data "
-                "SET rtmp_name=%s "
-                "WHERE discord_id=%s",
+                "SET discord_id=%s, discord_name=%s, twitch_name=%s, timezone=%s "
+                "WHERE rtmp_name=%s",
                 params)
             self._db_conn.commit()
 
