@@ -130,8 +130,9 @@ class Cancel(command.CommandType):
     async def _do_execute(self, cmd):
         success = await self._room.wants_to_cancel(cmd.author)
         if not success:
-            await self._room.write('{0} wishes to cancel the race. Both racers must type `.cancel` for the race '
-                                        'to be cancelled.'.format(cmd.author.mention))
+            await self._room.write(
+                '{0} wishes to cancel the race. Both racers must type `.cancel` for the race '
+                'to be cancelled.'.format(cmd.author.mention))
 
 
 class Contest(command.CommandType):
@@ -541,10 +542,11 @@ class RaceRoom(command.Module):
 
         if time_until_match < datetime.timedelta(seconds=0):
             if not self.played_all_races:
-                await self.write('I believe that I was just restarted; an error may have occurred. I am '
-                                      'beginning a new race and attempting to pick up this match where we left '
-                                      'off. If this is an error, or if there are unrecorded races, please contact '
-                                      'CoNDOR Staff (`.staff`).')
+                await self.write(
+                    'I believe that I was just restarted; an error may have occurred. I am '
+                    'beginning a new race and attempting to pick up this match where we left '
+                    'off. If this is an error, or if there are unrecorded races, please contact '
+                    'CoNDOR Staff (`.staff`).')
                 await self.begin_new_race()
         else:
             pm_warning = datetime.timedelta(minutes=30)
@@ -663,8 +665,9 @@ class RaceRoom(command.Module):
 
                 return
 
-        await self.write('{0}: I do not recognize you as one of the racers in this match. '
-                              'Contact CoNDOR Staff (`.staff`) if this is in error.'.format(member.mention))
+        await self.write(
+            '{0}: I do not recognize you as one of the racers in this match. '
+            'Contact CoNDOR Staff (`.staff`) if this is in error.'.format(member.mention))
 
     async def record_race(self, cancelled=False):
         if self.race and self.race.start_time:

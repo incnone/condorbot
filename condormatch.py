@@ -46,7 +46,7 @@ class CondorRacer(object):
 
     @property
     def gsheet_regex(self):
-        return re.compile( r'(?i)^\s*' + re.escape(self.rtmp_name) + r'\s*$' )
+        return re.compile(r'(?i)^\s*' + re.escape(self.rtmp_name) + r'\s*$')
 
     @property
     def escaped_twitch_name(self):

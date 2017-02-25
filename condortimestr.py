@@ -1,5 +1,4 @@
 import calendar
-import datetime
 
 
 def get_time_str(dt):

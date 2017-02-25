@@ -5,7 +5,7 @@ def init(config_filename):
     global SEASON_YEAR
 
     # admin
-    global ADMIN_ROLE_NAMES                     #list of names of roles to give admin access
+    global ADMIN_ROLE_NAMES                     # list of names of roles to give admin access
 
     # channels
     global MAIN_CHANNEL_NAME
@@ -19,9 +19,9 @@ def init(config_filename):
     global RACE_NOTIFY_IF_TIMES_WITHIN_SEC
 
     # race
-    global COUNTDOWN_LENGTH                        #number of seconds between the final .ready and race start
-    global INCREMENTAL_COUNTDOWN_START             #number of seconds at which to start counting down each second in chat
-    global FINALIZE_TIME_SEC                       #seconds after race end to finalize+record race
+    global COUNTDOWN_LENGTH                      # number of seconds between the final .ready and race start
+    global INCREMENTAL_COUNTDOWN_START           # number of seconds at which to start counting down each second in chat
+    global FINALIZE_TIME_SEC                     # seconds after race end to finalize+record race
 
     # database
     global MYSQL_DB_USER
@@ -40,29 +40,29 @@ def init(config_filename):
     global EVENTS_PORT
     
     defaults = {
-        'bot_command_prefix':'.',
-        'bot_version':'0.1.0',
-        'year':'2016',
-        'channel_main':'season4',
-        'channel_admin':'adminchat',
-        'channel_schedule':'schedule',
-        'channel_notifications':'bot_notifications',
-        'race_number_of_races':'3',
-        'race_alert_at_minutes':'30',
-        'race_countdown_time_seconds':'10',
-        'race_begin_counting_down_at':'5',
-        'race_end_after_first_done_seconds':'15',
-        'race_notify_if_times_within_seconds':'5',
-        'mysql_db_user':'',
-        'mysql_db_passwd':'',
-        'mysql_db_host':'',
-        'mysql_db_name':'',
-        'gsheet_credentials_filename':'data/gsheet_credentials.json',
-        'gsheet_doc_name':'CoNDOR Season 4',
-        'gsheet_timezone':'US/Eastern',
-        'events_activated':'true',
-        'events_server':'necrommunity.ovh',
-        'events_port':'5000'
+        'bot_command_prefix': '.',
+        'bot_version': '0.1.0',
+        'year': '2016',
+        'channel_main': 'season4',
+        'channel_admin': 'adminchat',
+        'channel_schedule': 'schedule',
+        'channel_notifications': 'bot_notifications',
+        'race_number_of_races': '3',
+        'race_alert_at_minutes': '30',
+        'race_countdown_time_seconds': '10',
+        'race_begin_counting_down_at': '5',
+        'race_end_after_first_done_seconds': '15',
+        'race_notify_if_times_within_seconds': '5',
+        'mysql_db_user': '',
+        'mysql_db_passwd': '',
+        'mysql_db_host': '',
+        'mysql_db_name': '',
+        'gsheet_credentials_filename': 'data/gsheet_credentials.json',
+        'gsheet_doc_name': 'CoNDOR Season 4',
+        'gsheet_timezone': 'US/Eastern',
+        'events_activated': 'true',
+        'events_server': 'necrommunity.ovh',
+        'events_port': '5000'
         }
 
     admin_roles = []

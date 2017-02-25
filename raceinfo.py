@@ -22,9 +22,9 @@ import clparse
 import seedgen
 
 NDChars = ['Cadence', 'Melody', 'Aria', 'Dorian', 'Eli', 'Monk', 'Dove', 'Coda', 'Bolt', 'Bard']       
-SEEDED_FLAG = int(pow(2,0))
-SUDDEN_DEATH_FLAG = int(pow(2,1))
-FLAGPLANT_FLAG = int(pow(2,2))
+SEEDED_FLAG = int(pow(2, 0))
+SUDDEN_DEATH_FLAG = int(pow(2, 1))
+FLAGPLANT_FLAG = int(pow(2, 2))
 
 
 def _parse_seed(args, race_info):
@@ -34,7 +34,6 @@ def _parse_seed(args, race_info):
     if args and len(args) >= 2 and args[0] in command_list:
         try:
             race_info.seed = int(args[1])
-            args = args[2:]
             return True
         except ValueError:
             return False
@@ -64,12 +63,10 @@ def _parse_char(args, race_info):
         if len(args) >= 2 and args[0] in command_list:
             if args[1].capitalize() in NDChars:
                 race_info.character = args[1].capitalize()
-                args = args[2:]
                 return True
         elif args[0].capitalize() in NDChars:
             race_info.character = args[0].capitalize()
-            args = args[1:]
-            return True            
+            return True
             
     return False
 
@@ -146,7 +143,7 @@ class RaceInfo(object):
 
     def __init__(self):
         self.seed = int(0)                   # the seed for the race
-        self.seed_fixed = False              # True means the specific seed is part of the race rules (seed doesn't change on rematch)
+        self.seed_fixed = False              # True means the specific seed is part of the race rules
         self.seeded = True                   # whether the race is run in seeded mode
         self.character = 'Cadence'           # the character for the race
         self.descriptor = 'All-zones'        # a short description (e.g. '4-shrines', 'leprechaun hunting', etc)
@@ -166,7 +163,9 @@ class RaceInfo(object):
 
     @property
     def flags(self):
-        return int(self.seeded)*SEEDED_FLAG + int(self.sudden_death)*SUDDEN_DEATH_FLAG + int(self.flagplant)*FLAGPLANT_FLAG
+        return int(self.seeded)*SEEDED_FLAG + \
+               int(self.sudden_death)*SUDDEN_DEATH_FLAG + \
+               int(self.flagplant)*FLAGPLANT_FLAG
 
     # returns a string "Seed: (int)" if the race is seeded, or the empty string otherwise
     def seed_str(self):
@@ -192,7 +191,6 @@ class RaceInfo(object):
     
     # returns an abbreviated string suitable for identifying this race
     def raceroom_name(self):
-        main_identifier = ''
         if self.character.title() in NDChars:
             main_identifier = self.character.lower()
         else:

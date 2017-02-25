@@ -17,8 +17,9 @@ class Events:
     def matchend(self, racer_1, racer_2):
         asyncio.ensure_future(self._send_event('matchend', {'racer1': racer_1, 'racer2': racer_2}))
 
-    async def _send_event(self, event, data):
-        if(config.EVENTS_ACTIVATED):
+    @staticmethod
+    async def _send_event(event, data):
+        if config.EVENTS_ACTIVATED:
             try:
                 with SocketIO(config.EVENTS_SERVER, config.EVENTS_PORT, LoggingNamespace, False) as socketIO:
                     socketIO.emit(event, data)

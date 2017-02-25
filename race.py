@@ -15,14 +15,32 @@ from raceinfo import RaceInfo
 from racer import Racer
 from events import Events
 
-RaceStatus = {'uninitialized':0, 'entry_open':1, 'counting_down':2, 'racing':3, 'paused':4, 'completed':5, 'finalized':6, 'cancelled':7}
-StatusStrs = {'0':'Not initialized.', '1':'Waiting for racers to `.ready`.', '2':'Starting!', '3':'In progress!', '4':'Paused!', '5':'Complete.', '6':'Results Finalized.', '7':'Race Cancelled.'}
+RaceStatus = {'uninitialized': 0,
+              'entry_open': 1,
+              'counting_down': 2,
+              'racing': 3,
+              'paused': 4,
+              'completed': 5,
+              'finalized': 6,
+              'cancelled': 7}
+StatusStrs = {'0': 'Not initialized.',
+              '1': 'Waiting for racers to `.ready`.',
+              '2': 'Starting!',
+              '3': 'In progress!',
+              '4': 'Paused!',
+              '5': 'Complete.',
+              '6': 'Results Finalized.',
+              '7': 'Race Cancelled.'}
+
 #    uninitialized   --  initialize() should be called on this object (not called in __init__ because coroutine)
 #    entry_open      --  the race is open to new entrants
-#    counting_down   --  the racebot is counting down to race start. if people .unready during this time, race reverts to the entry_open state
+#    counting_down   --  the racebot is counting down to race start.
+#                           if people .unready during this time, race reverts to the entry_open state
 #    racing          --  the race has begun, and at least one player is still racing
-#    race_completed  --  all players have either finished or forfeited. if players .undone during this time, race reverts to the racing state
-#    race_finalized  --  all players have finished or forfeited, and the race results are marked as final and can be recorded. no further changes possible.
+#    race_completed  --  all players have either finished or forfeited.
+#                           if players .undone during this time, race reverts to the racing state
+#    race_finalized  --  all players have finished or forfeited, and the race results are marked as final
+#                           and can be recorded. no further changes possible.
 
 
 def status_str(race_status):
@@ -36,13 +54,13 @@ class Race(object):
         self.room = race_room
         self.events = Events()
         self.condordb = condordb
-        self.race_info = race_info                  # Information on the type of race (e.g. seeded, seed, character) -- see RaceInfo for details
+        self.race_info = race_info                  # Information on the type of race (e.g. seeded, seed, character)
         self.racers = dict()                        # a dictionary of racers indexed by user id
         self._status = RaceStatus['uninitialized']  # see RaceStatus
 
-        self.no_entrants_time = None                # whenever there becomes zero entrance for the race, the time is stored here; used for cleanup code
-        self._countdown = int(0)                    # the current countdown (TODO: is this the right implementation? unclear what is best)
-        self._start_time = float(0)                 # system clock time for the beginning of the race (but is modified by pause())
+        self.no_entrants_time = None                # time at which there become zero entrants
+        self._countdown = int(0)                    # the current countdown
+        self._start_time = float(0)                 # system clock time for race begin (modified by pause())
         self._start_datetime = None                 # UTC time for the beginning of the race
         self._pause_time = float(0)                 # system clock time for last time we called pause()
 
@@ -240,7 +258,7 @@ class Race(object):
     async def _finalization_countdown(self):
         asyncio.ensure_future(self.room.update_leaderboard())
 
-        await asyncio.sleep(1) # Waiting for a short time feels good UI-wise
+        await asyncio.sleep(1)  # Waiting for a short time feels good UI-wise
         await self.room.write('The race will end in {} seconds.'.format(config.FINALIZE_TIME_SEC))
         await asyncio.sleep(config.FINALIZE_TIME_SEC)       
         await self._finalize_race()
