@@ -352,7 +352,7 @@ class RTMP(command.CommandType):
         discord_member = discord_members[0]
         rtmp_name = cmd.args[1]
 
-        success = self._cm.condordb.register_rtmp(discord_member, rtmp_name)
+        success = self._cm.condordb.re_register_rtmp(discord_member, rtmp_name)
         if success:
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
