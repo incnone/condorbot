@@ -129,7 +129,7 @@ class CondorSheet(object):
             self._log_warning('Couldn\'t find worksheet for week {}.'.format(week))
 
     async def unschedule_match(self, match):
-        return self._do_with_lock(self._unschedule_match, match)
+        return await self._do_with_lock(self._unschedule_match, match)
 
     async def _unschedule_match(self, match):
         week = match.week
@@ -158,7 +158,7 @@ class CondorSheet(object):
             self._log_warning('Couldn\'t find worksheet for week {}.'.format(week))
 
     async def schedule_match(self, match):
-        return self._do_with_lock(self._schedule_match, match)    
+        return await self._do_with_lock(self._schedule_match, match)
 
     async def _schedule_match(self, match):
         wks = self._get_wks(match.week)
@@ -186,7 +186,7 @@ class CondorSheet(object):
             self._log_warning('Couldn\'t find worksheet for week <{}>.'.format(match.week))
 
     async def record_match(self, match):
-        return self._do_with_lock(self._record_match, match)
+        return await self._do_with_lock(self._record_match, match)
 
     async def _record_match(self, match):
         match_results = self._db.get_score(match)
@@ -261,7 +261,7 @@ class CondorSheet(object):
                         return
 
     async def get_cawmentary(self, match):
-        return self._do_with_lock(self._get_cawmentary, match)
+        return await self._do_with_lock(self._get_cawmentary, match)
 
     async def _get_cawmentary(self, match):
         wks = self._get_wks(match.week)
@@ -283,7 +283,7 @@ class CondorSheet(object):
         return None
 
     async def add_cawmentary(self, match, cawmentator_twitchname):
-        return self._do_with_lock(self._add_cawmentary, match, cawmentator_twitchname)
+        return await self._do_with_lock(self._add_cawmentary, match, cawmentator_twitchname)
 
     async def _add_cawmentary(self, match, cawmentator_twitchname):
         wks = self._get_wks(match.week)
@@ -303,7 +303,7 @@ class CondorSheet(object):
                 self._log_warning('Couldn\'t find row for the match.')
 
     async def remove_cawmentary(self, match):
-        return self._do_with_lock(self._remove_cawmentary, match)
+        return await self._do_with_lock(self._remove_cawmentary, match)
 
     async def _remove_cawmentary(self, match):
         wks = self._get_wks(match.week)
@@ -319,7 +319,7 @@ class CondorSheet(object):
                 self._log_warning('Couldn\'t find row for the match.')
 
     async def is_showcase_match(self, match):
-        return self._do_with_lock(self._is_showcase_match, match)        
+        return await self._do_with_lock(self._is_showcase_match, match)
 
     async def _is_showcase_match(self, match):
         wks = self._get_wks(match.week)
