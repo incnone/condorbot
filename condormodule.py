@@ -319,7 +319,7 @@ class RTMP(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel == self._cm.necrobot.main_channel
+        return channel == self._cm.necrobot.main_channel or channel == self._cm.necrobot.admin_channel
 
     async def _do_execute(self, cmd):
         if not self._cm.necrobot.is_admin(cmd.author):
