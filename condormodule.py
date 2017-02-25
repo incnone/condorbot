@@ -101,9 +101,21 @@ class UpdateGSheetSchedule(command.CommandType):
         return channel == self._cm.admin_channel
 
     async def _do_execute(self, cmd):
-        for match in self._cm.condordb.get_all_matches():
-            if match.confirmed:
-                await self._cm.condorsheet.schedule_match(match)
+        await self._cm.necrobot.client.send_message(
+            cmd.channel,
+            'Updating the GSheet schedule...')
+        try:
+            for match in self._cm.condordb.get_all_matches():
+                if match.confirmed:
+                    await self._cm.condorsheet.schedule_match(match)
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Done.')
+        except Exception as e:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'An error occurred.')
+            raise e
 
 
 class Cawmentate(command.CommandType):
@@ -1366,8 +1378,8 @@ class CondorModule(command.Module):
         max_r1_len = 0
         max_r2_len = 0
         for match in upcoming_matches:
-            max_r1_len = max(max_r1_len, len(match.racer_1.twitch_name))
-            max_r2_len = max(max_r2_len, len(match.racer_2.twitch_name))
+            max_r1_len = max(max_r1_len, len(match.racer_1.unique_name))
+            max_r2_len = max(max_r2_len, len(match.racer_2.unique_name))
 
         for match in self.condordb.get_upcoming_matches(utcnow):
             num_matches += 1

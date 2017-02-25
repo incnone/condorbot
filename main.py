@@ -7,6 +7,7 @@ import config
 import datetime
 import os
 import seedgen
+import sys
 
 from necrobot import Necrobot
 from condormodule import CondorModule
@@ -16,7 +17,6 @@ class LoginData(object):
     token = ''
     admin_id = None
     server_id = None
-
 
 # -Logging-------------------------------
 LOG_LEVEL = logging.WARNING
@@ -37,6 +37,7 @@ while True:
     log_output_filename = '{0}-{1}.log'.format(utc_today_str, filename_rider)
     if not (log_output_filename in filenames_in_dir):
         break
+sys.stdout = open('logging/stdout_{0}.txt'.format(log_output_filename), 'w')
 log_output_filename = 'logging/{0}'.format(log_output_filename)
 
 # set up logger
