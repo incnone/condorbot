@@ -360,7 +360,8 @@ class CondorDB(object):
                 params)
 
             cursor.execute(
-                "SELECT FROM user_data "
+                "SELECT rtmp_name "
+                "FROM user_data "
                 "WHERE rtmp_name=%s",
                 params)
             for _ in cursor:
@@ -372,6 +373,7 @@ class CondorDB(object):
                 "SET rtmp_name=%s "
                 "WHERE discord_id=%s",
                 params)
+            self._db_conn.commit()
 
             return True
         finally:
