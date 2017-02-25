@@ -4,37 +4,37 @@ def init(config_filename):
 
     global SEASON_YEAR
 
-    #admin
+    # admin
     global ADMIN_ROLE_NAMES                     #list of names of roles to give admin access
 
-    #channels
+    # channels
     global MAIN_CHANNEL_NAME
     global ADMIN_CHANNEL_NAME
     global SCHEDULE_CHANNEL_NAME
     global NOTIFICATIONS_CHANNEL_NAME
 
-    #prerace
+    # prerace
     global RACE_NUMBER_OF_RACES
     global RACE_ALERT_AT_MINUTES
     global RACE_NOTIFY_IF_TIMES_WITHIN_SEC
 
-    #race
+    # race
     global COUNTDOWN_LENGTH                        #number of seconds between the final .ready and race start
     global INCREMENTAL_COUNTDOWN_START             #number of seconds at which to start counting down each second in chat
     global FINALIZE_TIME_SEC                       #seconds after race end to finalize+record race
 
-    #database
+    # database
     global MYSQL_DB_USER
     global MYSQL_DB_PASSWD
     global MYSQL_DB_HOST
     global MYSQL_DB_NAME
 
-    #gsheets
+    # gsheets
     global GSHEET_CREDENTIALS_FILENAME
     global GSHEET_DOC_NAME
     global GSHEET_TIMEZONE
 
-    #events
+    # events
     global EVENTS_ACTIVATED
     global EVENTS_SERVER
     global EVENTS_PORT

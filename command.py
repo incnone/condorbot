@@ -1,10 +1,11 @@
-## Represents a user-entered command
+# Represents a user-entered command
 
 import asyncio
-import clparse
 import config
+import logging
 import shlex
-   
+
+
 # Represents a full user command input (e.g. `.make -c Cadence -seed 12345 -custom 4-shrine`)
 class Command(object):
     def __init__(self, message):   
@@ -42,10 +43,11 @@ class Command(object):
         cmd_len = len(config.BOT_COMMAND_PREFIX) + len(self.command) + 1
         return self.message.content[cmd_len:]
 
+
 # Abstract base class; a particular command that the bot can interpret, and how to interpret it
 # (For instance, racemodule has a CommandType object called make, for the `.make` command.)
 class CommandType(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args):
         self.command_name_list = args             # the string that calls this command (e.g. 'make')
         self.help_text = 'This command has no help text.'
         self.suppress_help = False              # If true, will not show this command on .help requests
@@ -58,21 +60,20 @@ class CommandType(object):
     def called_by(self, name):
         return name in self.command_name_list
 
-    # If the Command object's command is this object's command, calls the (virtual) method _do_execute on it
-    @asyncio.coroutine
-    def execute(self, command):
-        if command.command in self.command_name_list and self.recognized_channel(command.channel):
-            yield from self._do_execute(command)
-
     # Returns true if the command is "recognized" in the given channel
     def recognized_channel(self, channel):
         return True
-    
+
+    # If the Command object's command is this object's command, calls the (virtual) method _do_execute on it
+    async def execute(self, command):
+        if command.command in self.command_name_list and self.recognized_channel(command.channel):
+            await self._do_execute(command)
+
     # Overwrite this to determine what this CommandType should do with a given Command
-    @asyncio.coroutine
-    def _do_execute(self, command):
-        print('Error: called CommandType._do_execute in the abstract base class.')
+    async def _do_execute(self, command):
+        logging.getLogger('discord').warning('Error: called CommandType._do_execute in the abstract base class.')
         pass
+
 
 class DefaultHelp(CommandType):
     def __init__(self, module):
@@ -81,8 +82,7 @@ class DefaultHelp(CommandType):
         self.suppress_help = True
         self.module = module
 
-    @asyncio.coroutine
-    def _do_execute(self, command):
+    async def _do_execute(self, command):
         if len(command.args) == 0:
             command_list_text = self.module.infostr + ": "
             found_any = False
@@ -92,13 +92,18 @@ class DefaultHelp(CommandType):
                     command_list_text += '`' + cmd_type.mention + '`, '
             if found_any:
                 command_list_text = command_list_text[:-2]
-                yield from self.module.client.send_message(command.channel, command_list_text)
-            yield from self.module.client.send_message(command.channel, 'Documentation at https://github.com/incnone/condorbot/blob/master/documentation.md .')
+                await self.module.client.send_message(command.channel, command_list_text)
+            await self.module.client.send_message(
+                command.channel,
+                'Documentation at https://github.com/incnone/condorbot/blob/master/documentation.md .')
         elif len(command.args) == 1:
             for cmd_type in self.module.command_types:
                 if cmd_type.called_by(command.args[0]) and cmd_type.recognized_channel(command.channel):
-                    yield from self.module.client.send_message(command.channel, '`{0}`: {1}'.format(cmd_type.mention, cmd_type.help_text))
+                    await self.module.client.send_message(
+                        command.channel,
+                        '`{0}`: {1}'.format(cmd_type.mention, cmd_type.help_text))
             return None
+
 
 # Abstract base class; a module that can be attached to the Necrobot
 class Module(object):
@@ -106,8 +111,7 @@ class Module(object):
         self.necrobot = necrobot
         self.command_types = []
 
-    @asyncio.coroutine
-    def initialize(self):
+    async def initialize(self):
         pass
 
     @property
@@ -125,13 +129,11 @@ class Module(object):
         return 'Unknown module'   
 
     # Attempts to execute the given command (if a command of its type is in command_types)
-    @asyncio.coroutine
-    def execute(self, command):
+    async def execute(self, command):
         for cmd_type in self.command_types:
-            yield from cmd_type.execute(command)
+            await cmd_type.execute(command)
 
     # Called when a user updates their preferences with the given UserPrefs
     # Base method does nothing; override for functionality
-    @asyncio.coroutine
-    def on_update_prefs(self, prefs, member):
+    async def on_update_prefs(self, prefs, member):
         pass

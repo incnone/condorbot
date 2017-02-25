@@ -2,6 +2,7 @@ import asyncio
 import command
 import config
 
+
 class Die(command.CommandType):
     def __init__(self, admin_module):
         command.CommandType.__init__(self, 'die')
@@ -9,13 +10,13 @@ class Die(command.CommandType):
         self.suppress_help = True
         self._am = admin_module
 
-    @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._am.necrobot.is_admin(command.author):
-            yield from self._am.necrobot.logout()
+    async def _do_execute(self, cmd):
+        if self._am.necrobot.is_admin(cmd.author):
+            await self._am.necrobot.logout()
 
     def recognized_channel(self, channel):
         return channel.is_private or channel == self._am.necrobot.main_channel
+
 
 class Info(command.CommandType):
     def __init__(self, admin_module):
@@ -23,25 +24,12 @@ class Info(command.CommandType):
         self.help_text = "Necrobot version information."
         self._am = admin_module
 
-    @asyncio.coroutine
-    def _do_execute(self, command):
-        yield from self._am.client.send_message(command.channel, 'Condorbot v-{0} (alpha).'.format(config.BOT_VERSION))
+    async def _do_execute(self, cmd):
+        await self._am.client.send_message(cmd.channel, 'Condorbot v-{0} (alpha).'.format(config.BOT_VERSION))
 
     def recognized_channel(self, channel):
         return channel.is_private or channel == self._am.necrobot.main_channel
 
-## TODO: this doesn't work yet.
-## TODO: it'd be nice to have an "update" command that spawns a bootstrapping process to pull from github and then restart this process
-##class Reboot(command.CommandType):
-##    def __init__(self, admin_module):
-##        command.CommandType.__init__(self, 'reboot')
-##        self.help_text = "Reboot Necrobot. Admin only."
-##        self._am = admin_module
-##
-##    @asyncio.coroutine
-##    def _do_execute(self, command):
-##        if self._am.necrobot.is_admin(command.author):
-##            yield from self._am.necrobot.reboot()
     
 class AdminModule(command.Module):
     def __init__(self, necrobot):

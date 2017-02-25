@@ -1,16 +1,14 @@
 import asyncio
-import discord
-import seedgen
 import textwrap
 
 import config
-import command
 
 from adminmodule import AdminModule
 
+
 class Necrobot(object):
 
-    ## Barebones constructor
+    # Barebones constructor
     def __init__(self, client):
         self.client = client
         self.server = None
@@ -22,7 +20,7 @@ class Necrobot(object):
         self._schedule_channel = None
         self._wants_to_quit = False
 
-    ## Initializes object; call after client has been logged in to discord
+    # Initializes object; call after client has been logged in to discord
     def post_login_init(self, server_id, admin_id=0):
         self.server = None
         self.prefs = None
@@ -35,9 +33,8 @@ class Necrobot(object):
         self.admin_id = admin_id if admin_id else None
        
         # set up server
-        id_is_int = False
         try:
-            server_id_int = int(server_id)
+            int(server_id)
             id_is_int = True
         except ValueError:
             id_is_int = False
@@ -59,10 +56,9 @@ class Necrobot(object):
         self._schedule_channel = self.find_channel(config.SCHEDULE_CHANNEL_NAME)
         self.load_module(AdminModule(self))
 
-    @asyncio.coroutine
-    def init_modules(self):
+    async def init_modules(self):
         for module in self.modules:
-            yield from module.initialize()
+            await module.initialize()
 
     # Causes the Necrobot to use the given module
     # Doesn't check for duplicates
@@ -102,7 +98,7 @@ class Necrobot(object):
         else:
             return ''
     
-    ## Get a list of all admin roles on the server
+    # Get a list of all admin roles on the server
     @property
     def admin_roles(self):
         admin_roles = []
@@ -134,7 +130,7 @@ class Necrobot(object):
                 return channel
         return None        
 
-    ## Returns a list of all members with a given username (capitalization ignored)
+    # Returns a list of all members with a given username (capitalization ignored)
     def find_members(self, username):
         to_return = []
         for member in self.server.members:
@@ -148,22 +144,19 @@ class Necrobot(object):
                 return member
         return None
 
-    ## Log out of discord
-    @asyncio.coroutine
-    def logout(self):
+    # Log out of discord
+    async def logout(self):
         self._wants_to_quit = True
-        yield from self.client.logout()
+        await self.client.logout()
 
-    ## Reboot our login to discord (log out, but do not set quitting = true)
-    @asyncio.coroutine
-    def reboot(self):
+    # Reboot our login to discord (log out, but do not set quitting = true)
+    async def reboot(self):
         self._wants_to_quit = False
-        yield from self.client.logout()
+        await self.client.logout()
 
-    @asyncio.coroutine
-    def execute(self, cmd):
+    async def execute(self, cmd):
         # don't care about bad commands
-        if cmd.command == None:
+        if cmd.command is None:
             return
         
         # don't reply to self
@@ -178,17 +171,17 @@ class Necrobot(object):
         for module in self.modules:
             asyncio.ensure_future(module.execute(cmd))
 
-    ## Send a DM when someone joins
-    @asyncio.coroutine
-    def on_member_join(self, member):
-        yield from self.client.send_message(member, textwrap.dedent("""
+    # Send a DM when someone joins
+    async def on_member_join(self, member):
+        await self.client.send_message(member, textwrap.dedent("""
             Welcome to the CoNDOR Season 5 server! Please register a stream and timezone with the bot. Example:
             ```
             .stream eladdifficult
             .timezone America/Toronto
             ```
-            See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list of timezones. (Please prefer to choose timezones like "America/Toronto" to timezones like "EDT"; the former should be better at taking local daylight-savings rules into account.)""")
-        )
+            See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list of timezones.
+            (Please prefer to choose timezones like "America/Toronto" to timezones like "EDT"; the former should be
+             better at taking local daylight-savings rules into account.)"""))
 
     # Returns the given Discord User as a Member of the server
     def get_as_member(self, user):
