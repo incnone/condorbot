@@ -18,6 +18,8 @@ class LoginData(object):
     admin_id = None
     server_id = None
 
+config.init('data/bot_config.txt')
+
 # -Logging-------------------------------
 LOG_LEVEL = logging.WARNING
 
@@ -37,7 +39,10 @@ while True:
     log_output_filename = '{0}-{1}.log'.format(utc_today_str, filename_rider)
     if not (log_output_filename in filenames_in_dir):
         break
-sys.stdout = open('logging/stdout_{0}.txt'.format(log_output_filename), 'w')
+
+if config.REDIRECT_STDOUT:
+    sys.stdout = open('logging/stdout_{0}.txt'.format(log_output_filename), 'w')
+
 log_output_filename = 'logging/{0}'.format(log_output_filename)
 
 # set up logger
@@ -49,7 +54,6 @@ logger.addHandler(handler)
 # --------------------------------------
 
 # General init----------------------------------------------------
-config.init('data/bot_config.txt')
 client = discord.Client()                                                       # the client for discord
 necrobot = Necrobot(client)
 seedgen.init_seed()
