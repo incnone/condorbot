@@ -90,6 +90,22 @@ def parse_schedule_args(cmd):
     return parsed_args
 
 
+class UpdateGSheetSchedule(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'updategsheetschedule')
+        self.help_text = 'Posts all scheduled matches to the GSheet. This is for correcting errors and shouldn\'t ' \
+                         'need to be called normally.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.admin_channel
+
+    async def _do_execute(self, cmd):
+        for match in self._cm.condordb.get_all_matches():
+            if match.confirmed:
+                await self._cm.condorsheet.schedule_match(match)
+
+
 class Cawmentate(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'cawmentate')
@@ -1126,6 +1142,7 @@ class CondorModule(command.Module):
                               ForceUnschedule(self),
                               ForceUpdate(self),
                               ForceTransferAccount(self),
+                              UpdateGSheetSchedule(self),
                               ]
 
     async def initialize(self):
@@ -1366,13 +1383,13 @@ class CondorModule(command.Module):
             
         schedule_text += '```'
 
-        # async for msg in self.necrobot.client.logs_from(self.necrobot.schedule_channel):
-        #     if (msg.author.name == 'condorbot' or msg.author.name == 'condorbot_alpha') \
-        #             and msg.content.startswith('```'):  # hack for now
-        #         await self.necrobot.client.edit_message(msg, schedule_text)
-        #         return
-        #
-        # await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
+        async for msg in self.necrobot.client.logs_from(self.necrobot.schedule_channel):
+            if (msg.author.name == 'condorbot' or msg.author.name == 'condorbot_alpha') \
+                    and msg.content.startswith('```'):  # hack for now
+                await self.necrobot.client.edit_message(msg, schedule_text)
+                return
+
+        await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
             
     async def post_match_alert(self, match):
         cawmentator = await self.condorsheet.get_cawmentary(match)
