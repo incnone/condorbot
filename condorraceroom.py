@@ -31,8 +31,8 @@ class Here(command.CommandType):
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        yield from self._room.enter_racer(command.author)
+    def _do_execute(self, cmd):
+        yield from self._room.enter_racer(cmd.author)
 
 
 class Ready(command.CommandType):
@@ -71,37 +71,40 @@ class Unready(command.CommandType):
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
+    def _do_execute(self, cmd):
         if not self._room.race or not self._room.race.is_before_race:
             return
         
-        racer = self._room.race.get_racer(command.author)
+        racer = self._room.race.get_racer(cmd.author)
         if racer:
-            success = yield from self._room.race.unready_racer(racer)  #success is True if the racer was ready and now is unready
-            #NB: success might be False even in reasonable-use contexts, e.g., if the countdown fails to cancel
+            success = yield from self._room.race.unready_racer(racer)  # True if the racer was ready and now is unready
+            # NB: success might be False even in reasonable-use contexts, e.g., if the countdown fails to cancel
             if success:
-                yield from self._room.write('{0} is no longer ready.'.format(command.author.mention))
+                yield from self._room.write('{0} is no longer ready.'.format(cmd.author.mention))
         else:
-            yield from self._room.write('{}: Warning: You have not yet said you\'re `.here` for the race.'.format(command.author.mention))
+            yield from self._room.write(
+                '{}: Warning: You have not yet said you\'re `.here` for the race.'.format(cmd.author.mention))
 
 
 class Done(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'done', 'finish', 'd')
-        self.help_text = 'Indicates you have finished the race goal, and gets your final time. You may instead use `.d` if preferred.'
+        self.help_text = 'Indicates you have finished the race goal, and gets your final time. ' \
+                         'You may instead use `.d` if preferred.'
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
+    def _do_execute(self, cmd):
         if not self._room.race or self._room.race.is_before_race:
             return
 
-        racer = self._room.race.get_racer(command.author)
+        racer = self._room.race.get_racer(cmd.author)
         if racer:
-            success = yield from self._room.race.finish_racer(racer) #success is true if the racer was racing and is now finished
+            success = yield from self._room.race.finish_racer(racer)  # true if the racer was racing and is now finished
             if success:
                 num_finished = self._room.race.num_finished
-                yield from self._room.write('{0} has finished in {1} place with a time of {2}.'.format(command.author.mention, ordinal(num_finished), racer.time_str))
+                yield from self._room.write('{0} has finished in {1} place with a time of {2}.'.format(
+                    cmd.author.mention, ordinal(num_finished), racer.time_str))
 
 
 class Undone(command.CommandType):
@@ -111,47 +114,57 @@ class Undone(command.CommandType):
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
+    def _do_execute(self, cmd):
         if not self._room.race or self._room.race.is_before_race:
             return
 
-        success = yield from self._room.race.unfinish_racer(self._room.race.get_racer(command.author)) #success is true if the racer was finished and now is not
-        #NB: success might be False even in reasonable-use contexts, e.g., if the race became finalized
+        success = yield from self._room.race.unfinish_racer(self._room.race.get_racer(cmd.author)) 
+        # success is true if the racer was finished and now is not
+        # NB: success might be False even in reasonable-use contexts, e.g., if the race became finalized
         if success: 
-            yield from self._room.write('{} is no longer done and continues to race.'.format(command.author.mention))
+            yield from self._room.write('{} is no longer done and continues to race.'.format(cmd.author.mention))
 
 
 class Cancel(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'cancel')
-        self.help_text = 'Indicates a desire to cancel the race. If both racers type `.cancel`, the race will be cancelled.'
+        self.help_text = 'Indicates a desire to cancel the race. If both racers type `.cancel`, ' \
+                         'the race will be cancelled.'
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        success = yield from self._room.wants_to_cancel(command.author)
+    def _do_execute(self, cmd):
+        success = yield from self._room.wants_to_cancel(cmd.author)
         if not success:
-            yield from self._room.write('{0} wishes to cancel the race. Both racers must type `.cancel` for the race to be cancelled.'.format(command.author.mention))
+            yield from self._room.write('{0} wishes to cancel the race. Both racers must type `.cancel` for the race '
+                                        'to be cancelled.'.format(cmd.author.mention))
 
 
 class Contest(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'contest')
-        self.help_text = 'Mark the most recent race as contested. CoNDOR Staff will look into the race and discuss with you.'
+        self.help_text = 'Mark the most recent race as contested. CoNDOR Staff will look into the race and ' \
+                         'discuss with you.'
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
+    def _do_execute(self, cmd):
         race_to_contest = self._room.condordb.largest_recorded_race_number(self._room.match)
         if self._room.race and not self._room.race.is_before_race:
             race_to_contest += + 1
 
         if race_to_contest == 0:
-            yield from self._room.write('{0}: No race has begun, so there is no race to contest. Use `.staff` if you need to alert CoNDOR Staff for some other reason.'.format(command.author.mention))
+            yield from self._room.write(
+                '{0}: No race has begun, so there is no race to contest. Use `.staff` if you '
+                'need to alert CoNDOR Staff for some other reason.'.format(cmd.author.mention))
         else:
-            self._room.condordb.set_contested(self._room.match, race_to_contest, command.author)
-            yield from self._room.write('{0} has contested the result of race number {1}.'.format(command.author.mention, race_to_contest))
-            yield from self._room.client.send_message(self._room.necrobot.notifications_channel, '{0} has contested the result of race number {1} in the match {2}.'.format(command.author.mention, race_to_contest, command.channel.mention))            
+            self._room.condordb.set_contested(self._room.match, race_to_contest, cmd.author)
+            yield from self._room.write(
+                '{0} has contested the result of race number {1}.'.format(cmd.author.mention, race_to_contest))
+            yield from self._room.client.send_message(
+                self._room.necrobot.notifications_channel, 
+                '{0} has contested the result of race number {1} in the match {2}.'.format(
+                    cmd.author.mention, race_to_contest, cmd.channel.mention))            
 
 
 class Time(command.CommandType):
@@ -161,7 +174,7 @@ class Time(command.CommandType):
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
+    def _do_execute(self, cmd):
         if not self._room.race or self._room.race.is_before_race:
             yield from self._room.write('The race hasn\'t started.')
         elif self._room.race.complete:
@@ -178,8 +191,8 @@ class ForceCancel(command.CommandType):
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.race and self._room.is_race_admin(command.author):
+    def _do_execute(self, cmd):
+        if self._room.race and self._room.is_race_admin(cmd.author):
             yield from self._room.cancel_race()
 
 
@@ -187,13 +200,12 @@ class ForceForfeit(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forceforfeit')
         self.help_text = 'Force the given racer to forfeit the race (even if they have finished).'
-        #self.suppress_help = True
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.race and self._room.is_race_admin(command.author) and not self._room.race.is_before_race:
-            for name in command.args:
+    def _do_execute(self, cmd):
+        if self._room.race and self._room.is_race_admin(cmd.author) and not self._room.race.is_before_race:
+            for name in cmd.args:
                 for racer in self._room.race.racers.values():
                     if racer.name.lower() == name.lower():
                         asyncio.ensure_future(self._room.race.forfeit_racer(racer))
@@ -202,23 +214,24 @@ class ForceForfeit(command.CommandType):
 class ForceChangeWinner(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcechangewinner')
-        self.help_text = 'Change the winner of a specified race. Usage is `.forcechangewinner <race number> <winner\'s twitch name>`.'
+        self.help_text = 'Change the winner of a specified race. Usage is `.forcechangewinner <race number> ' \
+                         '<winner\'s RTMP name>`.'
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.is_race_admin(command.author):
-            if len(command.args) != 2:
+    def _do_execute(self, cmd):
+        if self._room.is_race_admin(cmd.author):
+            if len(cmd.args) != 2:
                 yield from self._room.write('Wrong number of arguments for `.forcechangewinner`.')
                 return
 
             try:
-                race_int = int(command.args[0])
+                race_int = int(cmd.args[0])
             except ValueError:
-                yield from self._room.write('Error: couldn\'t parse {0} as a race number.'.format(command.args[0]))
+                yield from self._room.write('Error: couldn\'t parse {0} as a race number.'.format(cmd.args[0]))
                 return
 
-            winner_name = command.args[1].lower()
+            winner_name = cmd.args[1].lower()
             if winner_name == self._room.match.racer_1.twitch_name.lower():
                 winner_int = 1
             elif winner_name == self._room.match.racer_2.twitch_name.lower():
@@ -228,25 +241,27 @@ class ForceChangeWinner(command.CommandType):
                 return
 
             self._room.condordb.change_winner(self._room.match, race_int, winner_int)
-            yield from self._room.write('Recorded {0} as the winner of race {1}.'.format(command.args[1], race_int))
+            yield from self._room.write('Recorded {0} as the winner of race {1}.'.format(cmd.args[1], race_int))
             yield from self._room.update_leaderboard()
 
 
 class ForceRecordRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcerecordrace')
-        self.help_text = 'Record a race that the bot did not record (useful if the bot goes down during a race). Usage is `.forcerecordrace [winner | -draw] [time_winner [time_loser]] [-seed seed_number]`. '\
-                         'Winner names are twitch names (discord names will not work). See the channel name for the proper twitch names of the racers.'
+        self.help_text = 'Record a race that the bot did not record (useful if the bot goes down during a race). ' \
+                         'Usage is `.forcerecordrace [winner | -draw] [time_winner [time_loser]] ' \
+                         '[-seed seed_number]`. Winner names are RTMP names (discord names will not work). ' \
+                         'See the channel name for the proper RTMP names of the racers.'
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.is_race_admin(command.author):
-            if len(command.args) == 0:
+    def _do_execute(self, cmd):
+        if self._room.is_race_admin(cmd.author):
+            if len(cmd.args) == 0:
                 yield from self._room.write('You must specify a winner, or `-draw`, to record a race.')
                 return
 
-            winner_name = command.args[0].lower()
+            winner_name = cmd.args[0].lower()
             winner_int = 0
             if winner_name == self._room.match.racer_1.twitch_name.lower():
                 winner_int = 1
@@ -256,13 +271,13 @@ class ForceRecordRace(command.CommandType):
                 yield from self._room.write('I don\'t recognize the twitch name {}.'.format(winner_name))
                 return
 
-            command.args.pop(0)
+            cmd.args.pop(0)
             parse_seed = False
             parse_loser_time = False
             seed = 0
             racer_1_time = -1
             racer_2_time = -1
-            for arg in command.args:
+            for arg in cmd.args:
                 if arg == '-seed':
                     parse_seed = True
                 elif parse_seed:
@@ -286,7 +301,8 @@ class ForceRecordRace(command.CommandType):
                             yield from self._room.write('I can\'t parse racer times in races with no winner.')
                             return
                 
-            self._room.condordb.record_race(self._room.match, racer_1_time, racer_2_time, winner_int, seed, int(0), False, force_recorded=True)
+            self._room.condordb.record_race(
+                self._room.match, racer_1_time, racer_2_time, winner_int, seed, int(0), False, force_recorded=True)
             yield from self._room.write('Forced record of a race.')
             yield from self._room.update_leaderboard()
 
@@ -297,13 +313,13 @@ class ForceRecordRace(command.CommandType):
 class ForceNewRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcenewrace')
-        self.help_text = 'Force the bot to make a new race. If there is a current race and it is not yet recorded, it will be recorded and cancelled.'
-        #self.suppress_help = True
+        self.help_text = 'Force the bot to make a new race. If there is a current race and it is not yet recorded, ' \
+                         'it will be recorded and cancelled.'
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.is_race_admin(command.author):
+    def _do_execute(self, cmd):
+        if self._room.is_race_admin(cmd.author):
             if self._room.race and not self._room.recorded_race:
                 yield from self._room.record_race(cancelled=True)
             else:
@@ -313,20 +329,21 @@ class ForceNewRace(command.CommandType):
 class ForceCancelRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcecancelrace')
-        self.help_text = 'Mark a previously recorded race as cancelled. Usage is e.g., `.forcecancelrace 2`, to cancel the second uncancelled race of a match.'
+        self.help_text = 'Mark a previously recorded race as cancelled. Usage is e.g., `.forcecancelrace 2`, ' \
+                         'to cancel the second uncancelled race of a match.'
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.is_race_admin(command.author):
-            if len(command.args) != 1:
+    def _do_execute(self, cmd):
+        if self._room.is_race_admin(cmd.author):
+            if len(cmd.args) != 1:
                 yield from self._room.write('Wrong number of arguments for `.forcecancelrace`.')
                 return
 
             try:
-                race_number = int(command.args[0])
+                race_number = int(cmd.args[0])
             except ValueError:
-                yield from self._room.write('Error: couldn\'t parse {0} as a race number.'.format(command.args[0]))
+                yield from self._room.write('Error: couldn\'t parse {0} as a race number.'.format(cmd.args[0]))
                 return
 
             finished_number = self._room.condordb.finished_race_number(self._room.match, race_number)
@@ -345,8 +362,8 @@ class ForceRecordMatch(command.CommandType):
         self._room = race_room
 
     @asyncio.coroutine
-    def _do_execute(self, command):
-        if self._room.is_race_admin(command.author):
+    def _do_execute(self, cmd):
+        if self._room.is_race_admin(cmd.author):
             yield from self._room.record_match()
 
                                 
@@ -426,7 +443,7 @@ class RaceRoom(command.Module):
 
     # Set up the leaderboard etc. Should be called after creation; code not put into __init__ b/c coroutine
     @asyncio.coroutine
-    def initialize(self, users_to_mention=[]):
+    def initialize(self):
         yield from self.update_leaderboard()
         asyncio.ensure_future(self.countdown_to_match_start())
 
@@ -480,7 +497,8 @@ class RaceRoom(command.Module):
                 max_name_len = max(max_name_len, len(racer.discord_name))
             for racer in self.match.racers:
                 wins = self._cm.condordb.number_of_wins(self.match, racer, count_draws=True)
-                topic += '     ' + racer.discord_name + (' ' * (max_name_len - len(racer.discord_name))) + ' --- Wins: {0}\n'.format(str(round(wins,1) if wins % 1 else int(wins)))
+                topic += '     ' + racer.discord_name + (' ' * (max_name_len - len(racer.discord_name))) + \
+                         ' --- Wins: {0}\n'.format(str(round(wins, 1) if wins % 1 else int(wins)))
 
             race_number = self._cm.condordb.number_of_finished_races(self.match) + 1
             if race_number > config.RACE_NUMBER_OF_RACES:
@@ -494,8 +512,9 @@ class RaceRoom(command.Module):
             asyncio.ensure_future(self.client.edit_channel(self.channel, topic=topic))
         else:
             topic_str = '``` \n'
-            minutes_until_match = int( (self.match.time_until_match.total_seconds() + 30) // 60 )
-            topic_str += 'The race is scheduled to begin in {0} minutes! Please let the bot know you\'re here by typing .here. \n\n'.format(minutes_until_match)
+            minutes_until_match = int((self.match.time_until_match.total_seconds() + 30) // 60)
+            topic_str += 'The race is scheduled to begin in {0} minutes! ' \
+                         'Please let the bot know you\'re here by typing .here. \n\n'.format(minutes_until_match)
 
             waiting_str = ''
             if self.match.racer_1 not in self.entered_racers:
@@ -503,7 +522,8 @@ class RaceRoom(command.Module):
             if self.match.racer_2 not in self.entered_racers:
                 waiting_str += self.match.racer_2.twitch_name + ', '
 
-            topic_str += 'Still waiting for .here from: {0} \n'.format(waiting_str[:-2]) if waiting_str else 'Both racers are here!\n'
+            topic_str += 'Still waiting for .here from: {0} \n'.format(waiting_str[:-2]) \
+                if waiting_str else 'Both racers are here!\n'
 
             topic_str += '```'
                 
@@ -520,15 +540,22 @@ class RaceRoom(command.Module):
         if member_2:
             alert_str += member_2.mention + ', '
 
-        minutes_until_match = int( (self.match.time_until_match.total_seconds() + 30) // 60 )
+        minutes_until_match = int((self.match.time_until_match.total_seconds() + 30) // 60)
         if alert_str:
-            yield from self.write('{0}: The match is scheduled to begin in {1} minutes.'.format(alert_str[:-2], minutes_until_match))
+            yield from self.write('{0}: The match is scheduled to begin in {1} minutes.'.format(
+                alert_str[:-2], minutes_until_match))
 
         if send_pm:
             if member_1:
-                yield from self.client.send_message(member_1, '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(member_1.mention, self.match.racer_2.escaped_twitch_name, minutes_until_match))
+                yield from self.client.send_message(
+                    member_1, 
+                    '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(
+                        member_1.mention, self.match.racer_2.escaped_unique_name, minutes_until_match))
             if member_2:
-                yield from self.client.send_message(member_2, '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(member_2.mention, self.match.racer_1.escaped_twitch_name, minutes_until_match))
+                yield from self.client.send_message(
+                    member_2, 
+                    '{0}: Your match with {1} is scheduled to begin in {2} minutes.'.format(
+                        member_2.mention, self.match.racer_1.escaped_unique_name, minutes_until_match))
 
     @asyncio.coroutine
     def countdown_to_match_start(self):        
@@ -537,8 +564,10 @@ class RaceRoom(command.Module):
 
         if time_until_match < datetime.timedelta(seconds=0):
             if not self.played_all_races:
-                yield from self.write('I believe that I was just restarted; an error may have occurred. I am beginning a new race and attempting to pick up this ' \
-                                      'match where we left off. If this is an error, or if there are unrecorded races, please contact CoNDOR Staff (`.staff`).')
+                yield from self.write('I believe that I was just restarted; an error may have occurred. I am '
+                                      'beginning a new race and attempting to pick up this match where we left '
+                                      'off. If this is an error, or if there are unrecorded races, please contact '
+                                      'CoNDOR Staff (`.staff`).')
                 yield from self.begin_new_race()
         else:
             pm_warning = datetime.timedelta(minutes=30)
@@ -546,21 +575,22 @@ class RaceRoom(command.Module):
             alert_staff_warning = datetime.timedelta(minutes=5)
 
             if time_until_match > pm_warning:
-                yield from asyncio.sleep( (time_until_match - pm_warning).total_seconds() )
+                yield from asyncio.sleep((time_until_match - pm_warning).total_seconds())
                 if not self.race:
                     yield from self.alert_racers(send_pm=True)                
 
             time_until_match = self.match.time_until_match            
             if time_until_match > first_warning:
-                yield from asyncio.sleep( (time_until_match - first_warning).total_seconds() )
+                yield from asyncio.sleep((time_until_match - first_warning).total_seconds())
                 if not self.race:
                     yield from self.alert_racers()
 
             time_until_match = self.match.time_until_match
             if time_until_match > alert_staff_warning:
-                yield from asyncio.sleep( (time_until_match - alert_staff_warning).total_seconds() )
+                yield from asyncio.sleep((time_until_match - alert_staff_warning).total_seconds())
 
-            # this is done at the alert_staff_warning, unless this function was called after the alert_staff_warning, in which case do it immediately
+            # this is done at the alert_staff_warning, unless this function was called after the alert_staff_warning, 
+            # in which case do it immediately
             if not self.race:
                 yield from self.alert_racers()            
                 for racer in self.match.racers:
@@ -568,8 +598,10 @@ class RaceRoom(command.Module):
                         discord_name = ''
                         if racer.discord_name:
                             discord_name = ' (Discord name: {0})'.format(racer.discord_name)
-                        minutes_until_race = int( (self.match.time_until_match.total_seconds() + 30) // 60)
-                        yield from self.alert_staff('Alert: {0}{1} has not yet shown up for their match, which is scheduled in {2} minutes.'.format(racer.escaped_twitch_name, discord_name, minutes_until_race))
+                        minutes_until_race = int((self.match.time_until_match.total_seconds() + 30) // 60)
+                        yield from self.alert_staff(
+                            'Alert: {0}{1} has not yet shown up for their match, which is scheduled in '
+                            '{2} minutes.'.format(racer.escaped_unique_name, discord_name, minutes_until_race))
 
                 yield from self._cm.post_match_alert(self.match)
 
@@ -597,7 +629,9 @@ class RaceRoom(command.Module):
             if racer_as_member:
                 yield from self.race.enter_racer(racer_as_member)
             else:
-                yield from self.write('Error: Couldn\'t find the racer {0}. Please contact CoNDOR Staff (`.staff`).'.format(racer.escaped_twitch_name))
+                yield from self.write(
+                    'Error: Couldn\'t find the racer {0}. Please contact CoNDOR Staff (`.staff`).'.format(
+                        racer.escaped_unique_name))
                 
         yield from self.update_leaderboard()
 
@@ -610,8 +644,9 @@ class RaceRoom(command.Module):
         elif race_number == int(3):
             race_str = 'third'
             
-        yield from self.write('Please input the seed ({1}) and type `.ready` when you are ready for the {0} race. '\
-                              'When both racers `.ready`, the race will begin.'.format(race_str, self.race.race_info.seed))
+        yield from self.write(
+            'Please input the seed ({1}) and type `.ready` when you are ready for the {0} race. '
+            'When both racers `.ready`, the race will begin.'.format(race_str, self.race.race_info.seed))
 
     # Returns true if all racers are ready
     @property
@@ -655,7 +690,8 @@ class RaceRoom(command.Module):
 
                 return
 
-        yield from self.write('{0}: I do not recognize you as one of the racers in this match. Contact CoNDOR Staff (`.staff`) if this is in error.'.format(member.mention))
+        yield from self.write('{0}: I do not recognize you as one of the racers in this match. '
+                              'Contact CoNDOR Staff (`.staff`) if this is in error.'.format(member.mention))
 
     @asyncio.coroutine  
     def record_race(self, cancelled=False):
@@ -688,26 +724,31 @@ class RaceRoom(command.Module):
 
             if abs(racer_1_time - racer_2_time) <= (config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC*100):
                 race_number = self._cm.condordb.number_of_finished_races(self.match) + 1
-                yield from self.client.send_message(self.necrobot.notifications_channel,
+                yield from self.client.send_message(
+                    self.necrobot.notifications_channel,
                     'Race number {0} has finished within {1} seconds in channel {2}. ({3} -- {4}, {5} -- {6})'.format(
                         race_number, config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC, self.channel.mention,
                         self.match.racer_1.escaped_twitch_name, racetime.to_str(racer_1_time),
                         self.match.racer_2.escaped_twitch_name, racetime.to_str(racer_2_time)))
 
-            self._cm.condordb.record_race(self.match, racer_1_time, racer_2_time, winner, self.race.race_info.seed, self.race.start_time.timestamp(), cancelled)
+            self._cm.condordb.record_race(
+                self.match, racer_1_time, racer_2_time, winner, 
+                self.race.race_info.seed, self.race.start_time.timestamp(), cancelled)
 
             if not cancelled:
                 racer_1_member = self.necrobot.find_member_with_id(self.match.racer_1.discord_id)
                 racer_2_member = self.necrobot.find_member_with_id(self.match.racer_2.discord_id)
                 racer_1_mention = racer_1_member.mention if racer_1_member else ''
                 racer_2_mention = racer_2_member.mention if racer_2_member else ''
-                write_str = '{0}, {1}: The race is over, and has been recorded.'.format(racer_1_mention, racer_2_mention)
+                write_str = '{0}, {1}: The race is over, and has been recorded.'.format(
+                    racer_1_mention, racer_2_mention)
             else:
                 write_str = 'Race cancelled.'
                 
             yield from self.write(write_str)
-            yield from self.write('If you wish to contest the previous race\'s result, use the `.contest` command. This marks the race as contested; CoNDOR Staff will be alerted, and will '
-                                  'look into your race.')
+            yield from self.write(
+                'If you wish to contest the previous race\'s result, use the `.contest` command. This marks the '
+                'race as contested; CoNDOR Staff will be alerted, and will look into your race.')
 
             if self.played_all_races:
                 # Send match ending event if all races have been played
