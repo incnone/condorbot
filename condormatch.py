@@ -8,7 +8,10 @@ import config
 
 class CondorRacer(object):
     def __init__(self, discord_id):
-        self.discord_id = int(discord_id)
+        if discord_id is not None:
+            self.discord_id = int(discord_id)
+        else:
+            self.discord_id = None
         self.discord_name = None
         self.twitch_name = None
         self.rtmp_name = None

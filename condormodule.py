@@ -244,9 +244,7 @@ class MakeWeek(command.CommandType):
                     if matches:
                         matches = sorted(matches, key=lambda m: m.channel_name)
                         for match in matches:
-                            success = await self._cm.make_match_channel(match)
-                            if success:
-                                await asyncio.sleep(0.5)
+                            await self._cm.make_match_channel(match)
                     await self._cm.necrobot.client.send_message(cmd.channel, 'All matches made.')
                 except Exception as e:
                     await self._cm.necrobot.client.send_message(
@@ -340,13 +338,13 @@ class RTMP(command.CommandType):
                     await self._cm.necrobot.client.send_message(
                         cmd.channel,
                         '{0}: Registered your RTMP as `{1}`'.format(
-                            cmd.author.mention, _escaped(rtmp_name)))
+                            cmd.author.mention, rtmp_name))
                 else:
                     await self._cm.necrobot.client.send_message(
                         cmd.channel,
                         '{0}: Unable to register the RTMP stream `{1}`, because that name is already '
                         'registered to a different discord account.'.format(
-                            cmd.author.mention, _escaped(rtmp_name)))
+                            cmd.author.mention, rtmp_name))
 
 
 class Staff(command.CommandType):
@@ -395,13 +393,13 @@ class Stream(command.CommandType):
                     await self._cm.necrobot.client.send_message(
                         cmd.channel,
                         '{0}: Registered your twitch as `twitch.tv/{1}`'.format(
-                            cmd.author.mention, _escaped(twitch_name)))
+                            cmd.author.mention, twitch_name))
                 else:
                     await self._cm.necrobot.client.send_message(
                         cmd.channel,
                         '{0}: Unable to register the twitch stream `twitch.tv/{1}`, because that name is already '
                         'registered to a different discord account.'.format(
-                            cmd.author.mention, _escaped(twitch_name)))
+                            cmd.author.mention, twitch_name))
 
 
 class Suggest(command.CommandType):
@@ -1135,36 +1133,39 @@ class CondorModule(command.Module):
 
     async def make_match_channel(self, match):
         already_made_id = self.condordb.find_match_channel_id(match)
-        while already_made_id:
+        while already_made_id is not None:
             for ch in self.necrobot.server.channels:
                 if int(ch.id) == int(already_made_id):
                     return False
 
-            self.condordb.delete_channel(already_made_id)
-            already_made_id = self.condordb.find_match_channel_id(match)
-    
-        channel = await self.client.create_channel(self.necrobot.server, self.get_match_channel_name(match))
-        channel_id = channel.id
+            # self.condordb.delete_channel(already_made_id)
+            # already_made_id = self.condordb.find_match_channel_id(match)
+            already_made_id = None
 
-        read_permit = discord.Permissions.none()
-        read_permit.read_messages = True
-        await self.client.edit_channel_permissions(channel, self.necrobot.server.default_role, deny=read_permit)
+        channel = await self.client.create_channel(self.necrobot.server, self.get_match_channel_name(match))
+        channel_id = int(channel.id)
+
+        deny_read = discord.PermissionOverwrite()
+        permit_read = discord.PermissionOverwrite()
+        deny_read.read_messages = False
+        permit_read.read_messages = True
+        await self.client.edit_channel_permissions(channel, self.necrobot.server.default_role, deny_read)
         asyncio.ensure_future(self.channel_alert(channel_id))
 
-        self.condordb.register_channel(match, channel.id)
+        self.condordb.register_channel(match, channel_id)
 
         if match.racer_1.discord_id:
             racer_1 = self.necrobot.find_member_with_id(match.racer_1.discord_id)
             if racer_1:
-                await self.client.edit_channel_permissions(channel, racer_1, allow=read_permit)
+                await self.client.edit_channel_permissions(channel, racer_1, permit_read)
 
         if match.racer_2.discord_id:
             racer_2 = self.necrobot.find_member_with_id(match.racer_2.discord_id)
             if racer_2:
-                await self.client.edit_channel_permissions(channel, racer_2, allow=read_permit)
+                await self.client.edit_channel_permissions(channel, racer_2, permit_read)
 
         for role in self.necrobot.admin_roles:
-            await self.client.edit_channel_permissions(channel, role, allow=read_permit)
+            await self.client.edit_channel_permissions(channel, role, permit_read)
 
         await self.update_match_channel(match)
         await self.send_channel_start_text(channel, match)

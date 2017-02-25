@@ -103,7 +103,7 @@ class CondorSheet(object):
             self._lock.release()
 
     async def get_matches(self, week):
-        return self._do_with_lock(self._get_matches, week)
+        return await self._do_with_lock(self._get_matches, week)
 
     async def _get_matches(self, week):
         wks = self._get_wks(week)
@@ -112,16 +112,16 @@ class CondorSheet(object):
             racer_1_headcell = wks.find("Racer 1")
             racer_1_footcell = wks.find("--------")
 
-            ul_addr = wks.get_addr_int(racer_1_headcell.row+1, racer_1_headcell.col-1)
+            ul_addr = wks.get_addr_int(racer_1_headcell.row+1, racer_1_headcell.col)
             lr_addr = wks.get_addr_int(racer_1_footcell.row-1, racer_1_footcell.col+1)
             racers = wks.range('{0}:{1}'.format(ul_addr, lr_addr))
 
-            for cell in grouper(racers, 3, None):
-                racer_1 = self._db.get_from_rtmp_name(cell[1].value.rstrip(' '), register=True)
-                racer_2 = self._db.get_from_rtmp_name(cell[2].value.rstrip(' '), register=True)
+            for cell in grouper(racers, 2, None):
+                racer_1 = self._db.get_from_rtmp_name(cell[0].value.rstrip(' '), register=True)
+                racer_2 = self._db.get_from_rtmp_name(cell[1].value.rstrip(' '), register=True)
                 if racer_1 and racer_2:
                     new_match = CondorMatch(racer_1, racer_2, week)
-                    self._set_best_of_info(new_match, cell[0].value.rstrip(' '))
+                    # Can set best-of info here later
                     matches.append(new_match)
 
             return matches
