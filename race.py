@@ -193,7 +193,7 @@ class Race(object):
         racer_list = []
         for r_id in self.racers:
             racer = self.condordb.get_from_discord_id(r_id)
-            racer_list.append(racer.twitch_name)
+            racer_list.append(racer.rtmp_name)
             if not self.racers[r_id].begin_race():
                 print("{} isn't ready while calling race.begin_race -- unexpected error.".format(racer.name))
 
@@ -226,9 +226,9 @@ class Race(object):
             winner = None
             for r_id in self.racers:
                 racer = self.condordb.get_from_discord_id(r_id)
-                racer_list.append(racer.twitch_name)
+                racer_list.append(racer.rtmp_name)
                 if self.racers[r_id].is_done_racing and (winner_time == 0 or self.racers[r_id].time < winner_time):
-                    winner = racer.twitch_name
+                    winner = racer.rtmp_name
                     winner_time = self.racers[r_id].time
             # Send race end event with the winner
             self.events.raceend(racer_list[0], racer_list[1], winner)

@@ -639,8 +639,8 @@ class Uncawmentate(command.CommandType):
                 'of the racers in the match).'.format(cmd.author))
         else:
             # find the match
-            racer_1 = self._cm.condordb.get_from_twitch_name(cmd.args[0])
-            racer_2 = self._cm.condordb.get_from_twitch_name(cmd.args[1])
+            racer_1 = self._cm.condordb.get_from_unique_name(cmd.args[0])
+            racer_2 = self._cm.condordb.get_from_unique_name(cmd.args[1])
             match = self._cm.condordb.get_match(racer_1, racer_2)
             if not match:
                 await self._cm.necrobot.client.send_message(
@@ -677,7 +677,7 @@ class Uncawmentate(command.CommandType):
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
                 'Removed {0} as cawmentary for the match {1}-{2}.'.format(
-                    cmd.author.mention, racer_1.escaped_twitch_name, racer_2.escaped_twitch_name))
+                    cmd.author.mention, racer_1.escaped_unique_name, racer_2.escaped_unique_name))
 
 
 class Unconfirm(command.CommandType):
@@ -1319,12 +1319,12 @@ class CondorModule(command.Module):
             r2off = utcnow.astimezone(r2tz).utcoffset()
 
             if r1off > r2off:
-                ahead_racer_name = match.racer_1.escaped_twitch_name
-                behind_racer_name = match.racer_2.escaped_twitch_name
+                ahead_racer_name = match.racer_1.escaped_unique_name
+                behind_racer_name = match.racer_2.escaped_unique_name
                 diff = r1off - r2off
             elif r1off < r2off:
-                ahead_racer_name = match.racer_2.escaped_twitch_name
-                behind_racer_name = match.racer_1.escaped_twitch_name
+                ahead_racer_name = match.racer_2.escaped_unique_name
+                behind_racer_name = match.racer_1.escaped_unique_name
                 diff = r2off - r1off
             else:
                 await self.necrobot.client.send_message(
@@ -1407,14 +1407,14 @@ class CondorModule(command.Module):
         cawmentator = await self.condorsheet.get_cawmentary(match)
         minutes_until_match = int((match.time_until_match.total_seconds() + 30) // 60)
         alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(
-            match.racer_1.escaped_twitch_name, match.racer_2.escaped_twitch_name, minutes_until_match)
+            match.racer_1.escaped_unique_name, match.racer_2.escaped_unique_name, minutes_until_match)
         if cawmentator:
             alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(cawmentator))
         alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(
             match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
         await self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
         # Send race soon event
-        self.events.racesoon(match.racer_1.twitch_name, match.racer_2.twitch_name)
+        self.events.racesoon(match.racer_1.rtmp_name, match.racer_2.rtmp_name)
 
     async def remind_all(self, text=None, condition=lambda m: True):
         match_list = self.condordb.get_all_matches()

@@ -222,9 +222,9 @@ class ForceChangeWinner(command.CommandType):
                 return
 
             winner_name = cmd.args[1].lower()
-            if winner_name == self._room.match.racer_1.twitch_name.lower():
+            if winner_name == self._room.match.racer_1.unique_name.lower():
                 winner_int = 1
-            elif winner_name == self._room.match.racer_2.twitch_name.lower():
+            elif winner_name == self._room.match.racer_2.unique_name.lower():
                 winner_int = 2
             else:
                 await self._room.write('I don\'t recognize the twitch name {}.'.format(winner_name))
@@ -703,8 +703,8 @@ class RaceRoom(command.Module):
                     self.necrobot.notifications_channel,
                     'Race number {0} has finished within {1} seconds in channel {2}. ({3} -- {4}, {5} -- {6})'.format(
                         race_number, config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC, self.channel.mention,
-                        self.match.racer_1.escaped_twitch_name, racetime.to_str(racer_1_time),
-                        self.match.racer_2.escaped_twitch_name, racetime.to_str(racer_2_time)))
+                        self.match.racer_1.escaped_unique_name, racetime.to_str(racer_1_time),
+                        self.match.racer_2.escaped_unique_name, racetime.to_str(racer_2_time)))
 
             self._cm.condordb.record_race(
                 self.match, racer_1_time, racer_2_time, winner, 
@@ -727,7 +727,7 @@ class RaceRoom(command.Module):
 
             if self.played_all_races:
                 # Send match ending event if all races have been played
-                self.events.matchend(self.match.racer_1.twitch_name, self.match.racer_2.twitch_name)
+                self.events.matchend(self.match.racer_1.rtmp_name, self.match.racer_2.rtmp_name)
                 await self.record_match()
             else:
                 await self.begin_new_race()
