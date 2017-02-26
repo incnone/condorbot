@@ -501,7 +501,15 @@ class Suggest(command.CommandType):
                     'Error: {0} is not registered. Please register with `.stream` in the main channel. '
                     'If the problem persists, contact CoNDOR Staff.'.format(cmd.author.mention))
                 return                 
-            
+
+            if not match.racer_1 or not match.racer_2:
+                await self._cm.necrobot.client.send_messate(
+                    cmd.channel,
+                    'Error: At least one of the racers in this match is not registered, and needs to call '
+                    '`.register` in the main channel. (To check if you are registered, you can call `.userinfo '
+                    '<discord name>`. Use quotes around your discord name if it contains a space.)')
+                return
+
             if not int(cmd.author.id) == int(match.racer_1.discord_id) \
                     and not int(cmd.author.id) == int(match.racer_2.discord_id):
                 await self._cm.necrobot.client.send_message(
@@ -639,8 +647,8 @@ class Uncawmentate(command.CommandType):
                 'of the racers in the match).'.format(cmd.author))
         else:
             # find the match
-            racer_1 = self._cm.condordb.get_from_unique_name(cmd.args[0])
-            racer_2 = self._cm.condordb.get_from_unique_name(cmd.args[1])
+            racer_1 = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
+            racer_2 = self._cm.condordb.get_from_rtmp_name(cmd.args[1])
             match = self._cm.condordb.get_match(racer_1, racer_2)
             if not match:
                 await self._cm.necrobot.client.send_message(
