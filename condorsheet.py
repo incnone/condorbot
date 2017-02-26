@@ -59,7 +59,7 @@ class CondorSheet(object):
         except xml.etree.ElementTree.ParseError as e:
             timestamp = datetime.datetime.utcnow()
             print('{0}: XML parse error when looking up racer names in week sheet: {1}, {2}.'.format(
-                timestamp.strftime("%Y/%m/%d %H:%M:%S"), match.racer_1.twitch_name, match.racer_2.twitch_name))
+                timestamp.strftime("%Y/%m/%d %H:%M:%S"), match.racer_1.unique_name, match.racer_2.unique_name))
             print(e)
             traceback.print_exc()
             raise
@@ -95,7 +95,8 @@ class CondorSheet(object):
         try:
             to_return = await function(*args, **kwargs)
             return to_return
-        except xml.etree.ElementTree.ParseError:
+        except (xml.etree.ElementTree.ParseError,
+                gspread.exceptions.RequestError):
             self._reauthorize()
             to_return = await function(*args, **kwargs)
             return to_return
@@ -199,9 +200,9 @@ class CondorSheet(object):
             if match_row:
                 winner = ''
                 if match_results[0] > match_results[1]:
-                    winner = match.racer_1.twitch_name
+                    winner = match.racer_1.unique_name
                 elif match_results[0] < match_results[1]:
-                    winner = match.racer_2.twitch_name
+                    winner = match.racer_2.unique_name
 
                 score_list = [match_results[0] + 0.5*match_results[2], match_results[1] + 0.5*match_results[2]]
                 score_list = list(sorted(score_list, reverse=True))
@@ -226,7 +227,7 @@ class CondorSheet(object):
                 self._update_standings(match, match_results)
             else:
                 self._log_warning('Couldn\'t find match between <{0}> and <{1}> on the GSheet.'.format(
-                    match.racer_1.twitch_name, match.racer_2.twitch_name))
+                    match.racer_1.unique_name, match.racer_2.unique_name))
         else:
             self._log_warning('Couldn\'t find worksheet for week <{}>.'.format(match.week))
 
@@ -242,7 +243,7 @@ class CondorSheet(object):
                 timestamp = datetime.datetime.utcnow()
                 self._log_warning('{0}: XML parse error when looking up racer names in the standings: '
                                   '{1}, {2}.'.format(timestamp.strftime("%Y/%m/%d %H:%M:%S"),
-                                                     match.racer_1.twitch_name, match.racer_2.twitch_name))
+                                                     match.racer_1.unique_name, match.racer_2.unique_name))
                 self._log_warning(e)
                 raise
             

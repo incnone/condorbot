@@ -40,9 +40,6 @@ while True:
     if not (log_output_filename in filenames_in_dir):
         break
 
-if config.REDIRECT_STDOUT:
-    sys.stdout = open('logging/stdout_{0}.txt'.format(log_output_filename), 'w')
-
 log_output_filename = 'logging/{0}'.format(log_output_filename)
 
 # set up logger

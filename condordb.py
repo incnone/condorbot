@@ -21,7 +21,8 @@ class CondorDB(object):
                 user=config.MYSQL_DB_USER,
                 password=config.MYSQL_DB_PASSWD,
                 host=config.MYSQL_DB_HOST,
-                database=config.MYSQL_DB_NAME)
+                database=config.MYSQL_DB_NAME,
+                buffered=True)
         self._connect_stack += 1
 
     def _close(self):
@@ -43,9 +44,11 @@ class CondorDB(object):
         return racer
 
     def _get_racer_id(self, condor_racer):
+        if condor_racer is None:
+            return None
+
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
             params = (condor_racer.discord_id, condor_racer.twitch_name, condor_racer.rtmp_name)
 
@@ -56,36 +59,33 @@ class CondorDB(object):
                 params)
 
             for row in cursor:
-                to_return = row[0]
+                return row[0]
 
             # If no entry, make one
-            if to_return is None:
-                params = (condor_racer.discord_id, condor_racer.discord_name, condor_racer.twitch_name,
-                          condor_racer.timezone, condor_racer.rtmp_name,)
-                cursor.execute(
-                    "INSERT INTO user_data (discord_id, discord_name, twitch_name, timezone, rtmp_name) "
-                    "VALUES (%s, %s, %s, %s, %s)",
-                    params)
-                self._db_conn.commit()
+            params = (condor_racer.discord_id, condor_racer.discord_name, condor_racer.twitch_name,
+                      condor_racer.timezone, condor_racer.rtmp_name,)
+            cursor.execute(
+                "INSERT INTO user_data (discord_id, discord_name, twitch_name, timezone, rtmp_name) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                params)
+            self._db_conn.commit()
 
-                params = (condor_racer.discord_id, condor_racer.twitch_name, condor_racer.rtmp_name)
-                cursor.execute(
-                    "SELECT racer_id "
-                    "FROM user_data "
-                    "WHERE discord_id=%s OR twitch_name=%s OR rtmp_name=%s",
-                    params)
+            params = (condor_racer.discord_id, condor_racer.twitch_name, condor_racer.rtmp_name)
+            cursor.execute(
+                "SELECT racer_id "
+                "FROM user_data "
+                "WHERE discord_id=%s OR twitch_name=%s OR rtmp_name=%s",
+                params)
 
-                for row in cursor:
-                    to_return = row[0]
+            for row in cursor:
+                return row[0]
 
-            return to_return
         finally:
             self._close()
 
     def _get_racer_from_id(self, racer_id):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
             params = (racer_id,)
             cursor.execute(
@@ -94,17 +94,15 @@ class CondorDB(object):
                 "WHERE racer_id=%s",
                 params)
             for row in cursor:
-                to_return = CondorDB._get_racer_from_row(row)
-            if to_return is None:
-                self._log_warning('Couldn\'t find racer id <{}>.'.format(racer_id))
-            return to_return
+                return CondorDB._get_racer_from_row(row)
+
+            self._log_warning('Couldn\'t find racer id <{}>.'.format(racer_id))
         finally:
             self._close()
 
     def get_from_discord_id(self, discord_id):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
             params = (discord_id,)
             cursor.execute(
@@ -113,17 +111,15 @@ class CondorDB(object):
                 "WHERE discord_id=%s",
                 params)
             for row in cursor:
-                to_return = CondorDB._get_racer_from_row(row)
-            if to_return is None:
-                self._log_warning('Couldn\'t find discord id <{}>.'.format(discord_id))
-            return to_return
+                return CondorDB._get_racer_from_row(row)
+
+            self._log_warning('Couldn\'t find discord id <{}>.'.format(discord_id))
         finally:
             self._close()
 
     def get_from_discord_name(self, discord_name):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
             params = (discord_name.lower(),)
             cursor.execute(
@@ -132,10 +128,9 @@ class CondorDB(object):
                 "WHERE LOWER(discord_name)=%s",
                 params)
             for row in cursor:
-                to_return = CondorDB._get_racer_from_row(row)
-            if to_return is None:
-                self._log_warning('Couldn\'t find discord name <{}>.'.format(discord_name))
-            return to_return
+                return CondorDB._get_racer_from_row(row)
+
+            self._log_warning('Couldn\'t find discord name <{}>.'.format(discord_name))
         finally:
             self._close()
 
@@ -151,19 +146,15 @@ class CondorDB(object):
                 "WHERE LOWER(twitch_name)=%s",
                 params)
             for row in cursor:
-                to_return = CondorDB._get_racer_from_row(row)
+                return CondorDB._get_racer_from_row(row)
 
-            if to_return is None:
-                self._log_warning('Couldn\'t find twitch name <{}>.'.format(twitch_name))
-
-            return to_return
+            self._log_warning('Couldn\'t find twitch name <{}>.'.format(twitch_name))
         finally:
             self._close()
 
     def get_from_rtmp_name(self, rtmp_name, register=False):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
             params = (rtmp_name.lower(),)
             cursor.execute(
@@ -172,21 +163,19 @@ class CondorDB(object):
                 "WHERE LOWER(rtmp_name)=%s",
                 params)
             for row in cursor:
-                to_return = CondorDB._get_racer_from_row(row)
+                return CondorDB._get_racer_from_row(row)
 
-            if to_return is None:
-                if register:
-                    params = (rtmp_name,)
-                    cursor.execute(
-                        "INSERT INTO user_data (rtmp_name) "
-                        "VALUES (%s)",
-                        params)
-                    self._db_conn.commit()
-                    return self.get_from_rtmp_name(rtmp_name, False)
-                else:
-                    self._log_warning('Couldn\'t find RTMP name <{}>.'.format(rtmp_name))
+            if register:
+                params = (rtmp_name,)
+                cursor.execute(
+                    "INSERT INTO user_data (rtmp_name) "
+                    "VALUES (%s)",
+                    params)
+                self._db_conn.commit()
+                return self.get_from_rtmp_name(rtmp_name, False)
+            else:
+                self._log_warning('Couldn\'t find RTMP name <{}>.'.format(rtmp_name))
 
-            return to_return
         finally:
             self._close()
 
@@ -436,7 +425,6 @@ class CondorDB(object):
     def find_match_channel_id(self, match):
         try:
             self._connect()
-            to_return = None
 
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
 
@@ -447,11 +435,10 @@ class CondorDB(object):
                 "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
                 params)
             for row in cursor:
-                to_return = int(row[0])
-            if to_return is None:
-                self._log_warning('Couldn\'t find a match channel id.')
+                return int(row[0])
 
-            return to_return
+            self._log_warning('Couldn\'t find a match channel id.')
+
         finally:
             self._close()
 
@@ -480,7 +467,6 @@ class CondorDB(object):
     def get_open_match_channel_info(self, week):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
 
             cursor.execute(
@@ -491,9 +477,8 @@ class CondorDB(object):
                     racer_1 = self._get_racer_from_id(row[1])
                     racer_2 = self._get_racer_from_id(row[2])
                     match = CondorMatch(racer_1, racer_2, row[3])
-                    to_return = (int(row[0]), match)
+                    return int(row[0]), match
 
-            return to_return
         finally:
             self._close()
 
@@ -548,17 +533,12 @@ class CondorDB(object):
                     "ORDER BY week_number DESC",
                     params)
 
-                to_return = None
                 for row in cursor:
                     try:
                         week_number = int(row[0])
-                        to_return = self.get_match(racer_1, racer_2, week_number)
+                        return self.get_match(racer_1, racer_2, week_number)
                     except ValueError:
                         self._log_warning('ValueError in parsing week number {}.'.format(row[0]))
-                        to_return = None
-
-                return to_return
-
             else:
                 match_try = self._get_match(racer_1, racer_2, week_number)
                 if match_try:
@@ -571,7 +551,6 @@ class CondorDB(object):
     def _get_match(self, racer_1, racer_2, week_number):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number)
@@ -585,16 +564,13 @@ class CondorDB(object):
                     match.set_from_timestamp(int(row[0]))
                 match.flags = int(row[1])
                 match.set_number_of_races(int(row[2]))
-                to_return = match
-
-            return to_return
+                return match
         finally:
             self._close()
 
     def get_channel_id_from_match(self, match):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
@@ -604,17 +580,14 @@ class CondorDB(object):
                 "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
                 params)
             for row in cursor:
-                to_return = int(row[0])
-
-            return to_return
+                return int(row[0])
         finally:
             self._close()
 
     def get_match_from_channel_id(self, channel_id):
         try:
             self._connect()
-            to_return = None
-            cursor = self._db_conn.cursor()
+            cursor = self._db_conn.cursor(buffered=True)
 
             params = (channel_id,)
             cursor.execute(
@@ -627,11 +600,9 @@ class CondorDB(object):
                 racer_2 = self._get_racer_from_id(row[1])
                 if not racer_1 or not racer_2:
                     self._log_warning('Error: couldn\'t find racers in CondorDB.get_match_from_channel_id.')
-                    to_return = None
+                    return None
                 else:
-                    to_return = self.get_match(racer_1, racer_2, int(row[2]))
-
-            return to_return
+                    return self.get_match(racer_1, racer_2, int(row[2]))
         finally:
             self._close()
 
@@ -639,7 +610,7 @@ class CondorDB(object):
         try:
             self._connect()
             match_list = []
-            cursor = self._db_conn.cursor()
+            cursor = self._db_conn.cursor(buffered=True)
 
             cursor.execute(
                 "SELECT channel_id "
@@ -672,7 +643,7 @@ class CondorDB(object):
         try:
             self._connect()
             matches = []
-            cursor = self._db_conn.cursor()
+            cursor = self._db_conn.cursor(buffered=True)
 
             cursor.execute(
                 "SELECT racer_1_id,racer_2_id,week_number,timestamp,flags,number_of_races "
@@ -697,7 +668,6 @@ class CondorDB(object):
     def get_cawmentator(self, match):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
@@ -707,9 +677,8 @@ class CondorDB(object):
                 "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
                 params)
             for row in cursor:
-                to_return = self.get_from_discord_id(row[0])
+                return self.get_from_discord_id(row[0])
 
-            return to_return
         finally:
             self._close()
 
@@ -840,7 +809,6 @@ class CondorDB(object):
     def largest_recorded_race_number(self, match):
         try:
             self._connect()
-            to_return = 0
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
@@ -851,16 +819,15 @@ class CondorDB(object):
                 "ORDER BY race_number DESC",
                 params)
             for row in cursor:
-                to_return = int(row[0])
+                return int(row[0])
 
-            return to_return
+            return 0
         finally:
             self._close()
 
     def finished_race_number(self, match, finished_number):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
@@ -874,9 +841,8 @@ class CondorDB(object):
                 if not (int(row[1]) & CondorDB.RACE_CANCELLED_FLAG):
                     finished_number -= 1
                     if finished_number == 0:
-                        to_return = int(row[0])
+                        return int(row[0])
 
-            return to_return
         finally:
             self._close()
                 
@@ -928,7 +894,6 @@ class CondorDB(object):
     def get_score(self, match):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
@@ -942,20 +907,18 @@ class CondorDB(object):
                     r1wins = int(row[0])
                     r2wins = int(row[1])
                     draws = int(row[2])
-                    to_return = [r1wins, r2wins, draws]
+                    return [r1wins, r2wins, draws]
                 except ValueError:
                     self._log_warning('Error parsing an argument in CondorDB.get_score with '
                                       'racer_1_id = <{0}>, racer_2_id = <{1}>, week_number = <{2}>.'.format(
                                         self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week))
 
-            return to_return
         finally:
             self._close()
                 
     def record_race(self, match, racer_1_time, racer_2_time, winner, seed, timestamp, cancelled, force_recorded=False):
         try:
             self._connect()
-            cursor = self._db_conn.cursor()
 
             race_number = self.largest_recorded_race_number(match) + 1
             flags = 0
@@ -976,12 +939,15 @@ class CondorDB(object):
                       0,
                       flags,)
 
+            cursor = self._db_conn.cursor()
             cursor.execute(
                 "REPLACE INTO race_data "
                 "(racer_1_id, racer_2_id, week_number, race_number, timestamp, "
                 "seed, racer_1_time, racer_2_time, winner, contested, flags) "
                 "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", params)
+
             self._db_conn.commit()
+
         finally:
             self._close()
 
@@ -1042,9 +1008,8 @@ class CondorDB(object):
                 "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND race_number=%s",
                 params)
             for row in cursor:
-                to_return = int(row[0])
+                return int(row[0])
 
-            return to_return
         finally:
             self._close()
     

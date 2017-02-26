@@ -252,12 +252,12 @@ class ForceRecordRace(command.CommandType):
 
             winner_name = cmd.args[0].lower()
             winner_int = 0
-            if winner_name == self._room.match.racer_1.twitch_name.lower():
+            if winner_name == self._room.match.racer_1.unique_name.lower():
                 winner_int = 1
-            elif winner_name == self._room.match.racer_2.twitch_name.lower():
+            elif winner_name == self._room.match.racer_2.unique_name.lower():
                 winner_int = 2
             elif winner_name != '-draw':
-                await self._room.write('I don\'t recognize the twitch name {}.'.format(winner_name))
+                await self._room.write('I don\'t recognize the name {}.'.format(winner_name))
                 return
 
             cmd.args.pop(0)
@@ -670,6 +670,7 @@ class RaceRoom(command.Module):
 
     async def record_race(self, cancelled=False):
         if self.race and self.race.start_time:
+
             self.recorded_race = True
             racer_1_time = -1
             racer_2_time = -1
@@ -718,7 +719,7 @@ class RaceRoom(command.Module):
                     racer_1_mention, racer_2_mention)
             else:
                 write_str = 'Race cancelled.'
-                
+
             await self.write(write_str)
             await self.write(
                 'If you wish to contest the previous race\'s result, use the `.contest` command. This marks the '

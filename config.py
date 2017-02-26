@@ -3,7 +3,6 @@ def init(config_filename):
     global BOT_VERSION
 
     global SEASON_YEAR
-    global REDIRECT_STDOUT
 
     # admin
     global ADMIN_ROLE_NAMES                     # list of names of roles to give admin access
@@ -44,7 +43,6 @@ def init(config_filename):
         'bot_command_prefix': '.',
         'bot_version': '0.1.0',
         'year': '2016',
-        'redirect_stdout': 'false',
         'channel_main': 'season4',
         'channel_admin': 'adminchat',
         'channel_schedule': 'schedule',
@@ -87,8 +85,7 @@ def init(config_filename):
     BOT_VERSION = defaults['bot_version']
 
     SEASON_YEAR = int(defaults['year'])
-    REDIRECT_STDOUT = (defaults['redirect_stdout'] == 'true')
-    
+
     MAIN_CHANNEL_NAME = defaults['channel_main']
     ADMIN_CHANNEL_NAME = defaults['channel_admin']
     SCHEDULE_CHANNEL_NAME = defaults['channel_schedule']
@@ -112,6 +109,6 @@ def init(config_filename):
     GSHEET_DOC_NAME = defaults['gsheet_doc_name']
     GSHEET_TIMEZONE = defaults['gsheet_timezone']
 
-    EVENTS_ACTIVATED = bool(defaults['events_activated'])
+    EVENTS_ACTIVATED = defaults['events_activated'] == 'true'
     EVENTS_SERVER = defaults['events_server']
     EVENTS_PORT = int(defaults['events_port'])
