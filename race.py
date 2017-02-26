@@ -73,7 +73,7 @@ class Race(object):
             return
 
         self._status = RaceStatus['entry_open'] 
-        self.no_entrants_time = time.clock()
+        self.no_entrants_time = time.monotonic()
 
     # Returns the race start datetime (UTC)
     @property
@@ -127,7 +127,7 @@ class Race(object):
         if self._status == RaceStatus['paused']:
             return racetime.to_str(int(100*(self._pause_time - self._start_time)))
         elif self._status == RaceStatus['racing']:
-            return racetime.to_str(int(100*(time.clock() - self._start_time)))
+            return racetime.to_str(int(100*(time.monotonic() - self._start_time)))
         else:
             return ''
 
@@ -174,7 +174,7 @@ class Race(object):
     async def pause(self):
         if self._status == RaceStatus['racing']:
             self._status = RaceStatus['paused']
-            self._pause_time = time.clock()
+            self._pause_time = time.monotonic()
             asyncio.ensure_future(self.room.update_leaderboard())
             return True
         return False
@@ -183,7 +183,7 @@ class Race(object):
     async def unpause(self):
         if self._status == RaceStatus['paused']:
             self._status = RaceStatus['racing']
-            self._start_time += time.clock() - self._pause_time
+            self._start_time += time.monotonic() - self._pause_time
             asyncio.ensure_future(self.room.update_leaderboard())
             return True
         return False
@@ -197,7 +197,7 @@ class Race(object):
             if not self.racers[r_id].begin_race():
                 print("{} isn't ready while calling race.begin_race -- unexpected error.".format(racer.name))
 
-        self._start_time = time.clock()
+        self._start_time = time.monotonic()
         self._start_datetime = datetime.datetime.utcnow()
         await self.room.write('GO!')
         # Send race start event
@@ -316,7 +316,7 @@ class Race(object):
             del self.racers[racer_member.id]
             asyncio.ensure_future(self.room.update_leaderboard())
             if not self.racers:
-                self.no_entrants_time = time.clock()
+                self.no_entrants_time = time.monotonic()
             if (len(self.racers) < 2 and config.REQUIRE_AT_LEAST_TWO_FOR_RACE) or len(self.racers) < 1:
                 await self.cancel_countdown()   # TODO: implement correct behavior if this fails
             return True
@@ -347,7 +347,7 @@ class Race(object):
         if self.is_before_race:
             return False
         
-        finish_time = int(100*(time.clock() - self._start_time))
+        finish_time = int(100*(time.monotonic() - self._start_time))
         if racer and racer.finish(finish_time):
             asyncio.ensure_future(self._check_for_race_end())
             asyncio.ensure_future(self.room.update_leaderboard())
@@ -369,7 +369,7 @@ class Race(object):
 
     # Puts the given Racer in the 'forfeit' state
     async def forfeit_racer(self, racer):
-        forfeit_time = int(100*(time.clock() - self._start_time))
+        forfeit_time = int(100*(time.monotonic() - self._start_time))
         if racer and racer.forfeit(forfeit_time):
             asyncio.ensure_future(self._check_for_race_end())
             asyncio.ensure_future(self.room.update_leaderboard())

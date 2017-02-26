@@ -93,13 +93,11 @@ class CondorSheet(object):
     async def _do_with_lock(self, function, *args, **kwargs):
         await self._lock
         try:
-            to_return = await function(*args, **kwargs)
-            return to_return
+            return await function(*args, **kwargs)
         except (xml.etree.ElementTree.ParseError,
                 gspread.exceptions.RequestError):
             self._reauthorize()
-            to_return = await function(*args, **kwargs)
-            return to_return
+            return await function(*args, **kwargs)
         finally:
             self._lock.release()
 
