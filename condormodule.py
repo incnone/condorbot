@@ -1384,7 +1384,7 @@ class CondorModule(command.Module):
         for match in self.condordb.get_upcoming_matches(utcnow):
             num_matches += 1
             schedule_text += '{r1:>{w1}} v {r2:<{w2}} : '.format(
-                r1=match.racer_1.twitch_name, w1=max_r1_len, r2=match.racer_2.twitch_name, w2=max_r2_len)
+                r1=match.racer_1.unique_name, w1=max_r1_len, r2=match.racer_2.unique_name, w2=max_r2_len)
             if match.time - utcnow < datetime.timedelta(minutes=0):
                 schedule_text += 'Right now!'
             else:
