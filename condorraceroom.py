@@ -176,16 +176,16 @@ class Time(command.CommandType):
             await self._room.write('The current race time is {}.'.format(self._room.race.current_time_str))
 
 
-class ForceCancel(command.CommandType):
-    def __init__(self, race_room):
-        command.CommandType.__init__(self, 'forcecancel')
-        self.help_text = 'Cancels the race.'
-        self.suppress_help = True
-        self._room = race_room
-
-    async def _do_execute(self, cmd):
-        if self._room.race and self._room.is_race_admin(cmd.author):
-            await self._room.cancel_race()
+# class ForceCancel(command.CommandType):
+#     def __init__(self, race_room):
+#         command.CommandType.__init__(self, 'forcecancel')
+#         self.help_text = 'Cancels the race.'
+#         self.suppress_help = True
+#         self._room = race_room
+#
+#     async def _do_execute(self, cmd):
+#         if self._room.race and self._room.is_race_admin(cmd.author):
+#             await self._room.cancel_race()
 
 
 class ForceForfeit(command.CommandType):
@@ -352,6 +352,23 @@ class ForceRecordMatch(command.CommandType):
         if self._room.is_race_admin(cmd.author):
             await self._room.record_match()
 
+
+class Reseed(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'reseed')
+        self.help_text = 'Roll a new seed for the current race.'
+        self._room = race_room
+
+    async def _do_execute(self, cmd):
+        if self._room.is_race_admin(cmd.author):
+            if self._room.race is None:
+                await self._room.write('Cannot reseed, because there is no active race.')
+            elif not self._room.race.is_before_race:
+                await self._room.write('Cannot reseed, because we are not in the entry phase of the current race.')
+            else:
+                self._room.race.reseed()
+                await self._room.write('New seed generated: {0}.'.format(self._room.race.race_info.seed))
+
                                 
 class RaceRoom(command.Module):
 
@@ -393,13 +410,14 @@ class RaceRoom(command.Module):
                               Cancel(self),
                               Time(self),
                               Contest(self),
-                              ForceCancel(self),
+                              # ForceCancel(self),
                               ForceChangeWinner(self),
                               ForceForfeit(self),
                               ForceRecordRace(self),
                               ForceNewRace(self),
                               ForceCancelRace(self),
                               ForceRecordMatch(self),
+                              Reseed(self)
                               ]
 
     @property

@@ -20,6 +20,26 @@ class LoginData(object):
 
 config.init('data/bot_config.txt')
 
+# Prepend timestamps to stdout
+old_stdout = sys.stdout
+
+
+class StampedStdout:
+    new_line = True
+
+    def write(self, s):
+        if s == '\n':
+            old_stdout.write(s)
+            self.new_line = True
+        elif self.new_line:
+            old_stdout.write('[{0}]: {1}'.format(datetime.datetime.utcnow().strftime("%H-%M-%S"), s))
+            self.new_line = False
+        else:
+            self.write(s)
+
+
+sys.stdout = StampedStdout()
+
 # -Logging-------------------------------
 LOG_LEVEL = logging.WARNING
 

@@ -6,12 +6,11 @@
 import asyncio
 import config
 import datetime
-import discord
 import racetime
 import time
 import pytz
 
-from raceinfo import RaceInfo
+import seedgen
 from racer import Racer
 from events import Events
 
@@ -120,6 +119,9 @@ class Race(object):
             return self.racers[racer_usr.id]
         else:
             return None
+
+    def reseed(self):
+        self.race_info.seed = seedgen.get_new_seed()
 
     # Returns the current time elapsed as a string "[m]m:ss.hh"
     @property

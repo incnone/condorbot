@@ -728,6 +728,7 @@ class Unconfirm(command.CommandType):
             # ...and now is not
             else:
                 await self._cm.condorsheet.unschedule_match(match)
+                await self._cm.delete_race_room(match)
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
                     'The match has been unscheduled. Please `.suggest` a new time when one has been agreed upon.')
@@ -1266,6 +1267,11 @@ class CondorModule(command.Module):
         if channel:
             self._racerooms = [room for room in self._racerooms if int(room.channel.id) != int(channel.id)]
             self.make_race_room(match)
+
+    # TODO: the important thing here is to actually get rid of all the Tasks the RaceRoom has made,
+    # which means doing this properly requires keeping track of and cleaning up RaceRooms properly
+    async def delete_race_room(self, match):
+        pass
 
     async def update_match_channel(self, match):
         if match.confirmed and match.time_until_alert < datetime.timedelta(seconds=1):
