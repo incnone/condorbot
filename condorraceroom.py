@@ -36,7 +36,7 @@ class Here(command.CommandType):
 
 class Ready(command.CommandType):
     def __init__(self, race_room):
-        command.CommandType.__init__(self, 'ready', 'r')
+        command.CommandType.__init__(self, 'ready')
         self.help_text = 'Indicates that you are ready to begin the race. The race begins when all entrants are ready.'
         self._room = race_room
 
