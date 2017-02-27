@@ -597,7 +597,11 @@ class RaceRoom(command.Module):
                         minutes_until_race = int((self.match.time_until_match.total_seconds() + 30) // 60)
                         await self.alert_staff(
                             'Alert: {0}{1} has not yet shown up for their match, which is scheduled in '
-                            '{2} minutes.'.format(racer.escaped_unique_name, discord_name, minutes_until_race))
+                            '{2} minutes in {3}.'.format(
+                                racer.escaped_unique_name,
+                                discord_name,
+                                minutes_until_race,
+                                self.channel.mention))
 
                 await self._cm.post_match_alert(self.match)
 

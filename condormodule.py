@@ -18,13 +18,6 @@ from condorsheet import CondorSheet
 from events import Events
 
 
-def _escaped(discord_str):
-    escaped_str = discord_str
-    for char in ['*', '~', '_']:
-        escaped_str = escaped_str.replace(char, '\\' + char)
-    return escaped_str
-
-
 def parse_schedule_args(cmd):
     if not len(cmd.args) == 3:
         return None
@@ -1425,7 +1418,7 @@ class CondorModule(command.Module):
                 condortimestr.timedelta_to_string(match.time - utcnow))
             match_cawmentator = await self.condorsheet.get_cawmentary(match)
             if match_cawmentator:
-                display_text += '    Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(match_cawmentator))
+                display_text += '    Cawmentary: http://www.twitch.tv/{0} \n'.format(match_cawmentator)
             else:
                 display_text += '    Cawmentary: None registered yet. \n'
         return display_text
@@ -1472,7 +1465,7 @@ class CondorModule(command.Module):
         alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(
             match.racer_1.escaped_unique_name, match.racer_2.escaped_unique_name, minutes_until_match)
         if cawmentator:
-            alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(cawmentator))
+            alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(cawmentator)
         alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(
             match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
         await self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
