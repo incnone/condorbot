@@ -1,31 +1,9 @@
 import datetime
-import logging
 import pytz
 import re
 
 import condortimestr
 import config
-from enum import Enum
-
-
-class CondorLeague(Enum):
-    NONE = 0
-    BLOOD = 1
-    TITANIUM = 2
-    OBSIDIAN = 3
-    CRYSTAL = 4
-
-    def __str__(self):
-        if self.value == 0:
-            return 'None'
-        elif self.value == 1:
-            return 'Blood'
-        elif self.value == 2:
-            return 'Titanium'
-        elif self.value == 3:
-            return 'Obsidian'
-        elif self.value == 4:
-            return 'Crystal'
 
 
 class CondorRacer(object):
@@ -136,7 +114,6 @@ class CondorMatch(object):
         self._time = None
         self._number_of_races = config.RACE_NUMBER_OF_RACES
         self.flags = 0
-        self.league = CondorLeague.NONE
 
     @property
     def channel_name(self):
@@ -181,35 +158,6 @@ class CondorMatch(object):
     @property
     def number_of_races(self):
         return self._number_of_races
-
-    def set_league_from_str(self, st):
-        s = st.lower()
-        if s == 'blood':
-            self.league = CondorLeague.BLOOD
-        elif s == 'titanium':
-            self.league = CondorLeague.TITANIUM
-        elif s == 'obsidian':
-            self.league = CondorLeague.OBSIDIAN
-        elif s == 'crystal':
-            self.league = CondorLeague.CRYSTAL
-        else:
-            logging.getLogger('discord').warning(
-                'Tried to set a match\'s league from the string <>.'.format(st))
-
-    def set_league_from_value(self, lv):
-        if lv == 0:
-            self.league = CondorLeague.NONE
-        elif lv == 1:
-            self.league = CondorLeague.BLOOD
-        elif lv == 2:
-            self.league = CondorLeague.TITANIUM
-        elif lv == 3:
-            self.league = CondorLeague.OBSIDIAN
-        elif lv == 4:
-            self.league = CondorLeague.CRYSTAL
-        else:
-            logging.getLogger('discord').warning(
-                'Tried to set a match\'s league from the value <>.'.format(lv))
 
     def set_from_timestamp(self, timestamp):
         td = datetime.timedelta(seconds=timestamp)
