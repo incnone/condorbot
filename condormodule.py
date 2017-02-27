@@ -13,6 +13,7 @@ import config
 
 from condordb import CondorDB
 from condormatch import CondorRacer
+from condormatch import CondorLeague
 from condorraceroom import RaceRoom
 from condorsheet import CondorSheet
 from events import Events
@@ -1412,10 +1413,12 @@ class CondorModule(command.Module):
             display_text = 'Next match: \n'
 
         for match in match_list:
-            display_text += '\N{BULLET} **{0}** - **{1}**: {2}. \n'.format(
+            display_text += '\N{BULLET} **{0}** - **{1}**. \n'.format(
                 match.racer_1.unique_name,
-                match.racer_2.unique_name,
-                condortimestr.timedelta_to_string(match.time - utcnow))
+                match.racer_2.unique_name)
+            if match.league != CondorLeague.NONE:
+                display_text += ' ({0})'.format(match.league)
+            display_text += ': {0}. \n'.format(condortimestr.timedelta_to_string(match.time - utcnow))
             match_cawmentator = await self.condorsheet.get_cawmentary(match)
             if match_cawmentator:
                 display_text += '    Cawmentary: http://www.twitch.tv/{0} \n'.format(match_cawmentator)
@@ -1462,8 +1465,12 @@ class CondorModule(command.Module):
     async def post_match_alert(self, match):
         cawmentator = await self.condorsheet.get_cawmentary(match)
         minutes_until_match = int((match.time_until_match.total_seconds() + 30) // 60)
-        alert_text = 'The match {0} v {1} is scheduled to begin in {2} minutes.\n'.format(
-            match.racer_1.escaped_unique_name, match.racer_2.escaped_unique_name, minutes_until_match)
+        alert_text = 'The match **{0}** - **{1}** '.format(
+            match.racer_1.escaped_unique_name,
+            match.racer_2.escaped_unique_name)
+        if match.league != CondorLeague.NONE:
+            alert_text += '({0}) '.format(match.league)
+        alert_text += 'is scheduled to begin in {2} minutes.\n'.format(minutes_until_match)
         if cawmentator:
             alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(cawmentator)
         alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(
