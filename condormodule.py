@@ -322,6 +322,34 @@ class CloseWeek(command.CommandType):
                     raise e        
 
 
+class NextRace(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'nextrace', 'nextmatch', 'next')
+        self.help_text = 'Give information about the next upcoming race(s).'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.necrobot.main_channel
+
+    async def _do_execute(self, cmd):
+        utcnow = pytz.utc.localize(datetime.datetime.utcnow())
+        matches = self._cm.condordb.get_upcoming_matches(utcnow)
+        if not matches:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Didn\'t find any scheduled matches!')
+            return
+
+        next_match = matches[0]
+        upcoming_matches = []
+        for match in matches:
+            if match.time - next_match.time < datetime.timedelta(hours=1, minutes=5):
+                upcoming_matches.append(match)
+
+        infobox = await self._cm.get_nextrace_displaytext(upcoming_matches)
+        await self._cm.necrobot.client.send_message(cmd.channel, infobox)
+
+
 class Register(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'register')
@@ -1147,6 +1175,7 @@ class CondorModule(command.Module):
                               Confirm(self),
                               CloseWeek(self),
                               MakeWeek(self),
+                              NextRace(self),
                               Register(self),
                               RTMP(self),
                               Staff(self),
@@ -1382,21 +1411,37 @@ class CondorModule(command.Module):
             await self.update_schedule_channel()
             await asyncio.sleep(60)
 
-    async def update_schedule_channel(self):
-        schedule_text = '``` \nUpcoming matches: \n'
+    async def get_nextrace_displaytext(self, match_list):
         utcnow = pytz.utc.localize(datetime.datetime.utcnow())
-        max_matches = 20
-        num_matches = 0
+        if len(match_list) > 1:
+            display_text = 'Upcoming matches: \n'
+        else:
+            display_text = 'Next match: \n'
 
-        upcoming_matches = self.condordb.get_upcoming_matches(utcnow)
+        for match in match_list:
+            display_text += '\N{BULLET} **{0}** - **{1}**: {2}. \n'.format(
+                match.racer_1.unique_name,
+                match.racer_2.unique_name,
+                condortimestr.timedelta_to_string(match.time - utcnow))
+            match_cawmentator = await self.condorsheet.get_cawmentary(match)
+            if match_cawmentator:
+                display_text += '    Cawmentary: http://www.twitch.tv/{0} \n'.format(_escaped(match_cawmentator))
+            else:
+                display_text += '    Cawmentary: None registered yet. \n'
+        return display_text
+
+    @staticmethod
+    def get_matches_infobox(match_list):
+        utcnow = pytz.utc.localize(datetime.datetime.utcnow())
+
         max_r1_len = 0
         max_r2_len = 0
-        for match in upcoming_matches:
+        for match in match_list:
             max_r1_len = max(max_r1_len, len(match.racer_1.unique_name))
             max_r2_len = max(max_r2_len, len(match.racer_2.unique_name))
 
-        for match in self.condordb.get_upcoming_matches(utcnow):
-            num_matches += 1
+        schedule_text = '``` \nUpcoming matches: \n'
+        for match in match_list:
             schedule_text += '{r1:>{w1}} v {r2:<{w2}} : '.format(
                 r1=match.racer_1.unique_name, w1=max_r1_len, r2=match.racer_2.unique_name, w2=max_r2_len)
             if match.time - utcnow < datetime.timedelta(minutes=0):
@@ -1404,10 +1449,14 @@ class CondorModule(command.Module):
             else:
                 schedule_text += condortimestr.get_24h_time_str(match.time)
             schedule_text += '\n'
-            if num_matches >= max_matches:
-                break
-            
         schedule_text += '```'
+        return schedule_text
+
+    async def update_schedule_channel(self):
+        utcnow = pytz.utc.localize(datetime.datetime.utcnow())
+        upcoming_matches = self.condordb.get_upcoming_matches(utcnow)
+        upcoming_matches = upcoming_matches[:20]
+        schedule_text = self.get_matches_infobox(upcoming_matches)
 
         async for msg in self.necrobot.client.logs_from(self.necrobot.schedule_channel):
             if (msg.author.name == 'condorbot' or msg.author.name == 'condorbot_alpha') \
