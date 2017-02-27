@@ -137,7 +137,6 @@ class CondorDB(object):
     def get_from_twitch_name(self, twitch_name):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
             params = (twitch_name.lower(),)
             cursor.execute(
@@ -219,11 +218,12 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
-                      match.week, match.flags, match.number_of_races, match.flags, match.number_of_races)
+                      match.week, match.flags, match.number_of_races, match.flags, match.number_of_races,
+                      match.league.value)
             cursor.execute(
-                "INSERT INTO match_data (racer_1_id, racer_2_id, week_number, flags, number_of_races) "
-                "VALUES (%s,%s,%s,%s,%s) "
-                "ON DUPLICATE KEY UPDATE flags=%s, number_of_races=%s",
+                "INSERT INTO match_data (racer_1_id, racer_2_id, week_number, flags, number_of_races, league) "
+                "VALUES (%s,%s,%s,%s,%s,%s) "
+                "ON DUPLICATE KEY UPDATE flags=%s, number_of_races=%s, league=%s",
                 params)
 
             params = (channel_id, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week)
@@ -555,7 +555,7 @@ class CondorDB(object):
 
             params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number)
             cursor.execute(
-                "SELECT timestamp,flags,number_of_races FROM match_data "
+                "SELECT timestamp,flags,number_of_races,league FROM match_data "
                 "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
                 params)
             for row in cursor:
@@ -564,6 +564,7 @@ class CondorDB(object):
                     match.set_from_timestamp(int(row[0]))
                 match.flags = int(row[1])
                 match.set_number_of_races(int(row[2]))
+                match.set_league_from_value(int(row[3]))
                 return match
         finally:
             self._close()
@@ -629,11 +630,11 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (match.timestamp, match.flags,
+            params = (match.timestamp, match.flags, match.league.value,
                       self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
             cursor.execute(
                 "UPDATE match_data "
-                "SET timestamp=%s,flags=%s "
+                "SET timestamp=%s,flags=%s,league=%s "
                 "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s", params)
             self._db_conn.commit()
         finally:
@@ -646,7 +647,7 @@ class CondorDB(object):
             cursor = self._db_conn.cursor(buffered=True)
 
             cursor.execute(
-                "SELECT racer_1_id,racer_2_id,week_number,timestamp,flags,number_of_races "
+                "SELECT racer_1_id,racer_2_id,week_number,timestamp,flags,number_of_races,league "
                 "FROM match_data "
                 "ORDER BY timestamp ASC")
             for row in cursor:
@@ -656,6 +657,7 @@ class CondorDB(object):
                 match = CondorMatch(racer_1, racer_2, week)
                 match.flags = int(row[4])
                 match.set_number_of_races(int(row[5]))
+                match.set_league_from_value(int(row[6]))
                 if match.confirmed and not match.played:
                     match.set_from_timestamp(int(row[3]))
                     if match.time - time > datetime.timedelta(minutes=-30):
@@ -777,7 +779,8 @@ class CondorDB(object):
             num_wins = 0
             racer_number = match.racer_number(racer)
             if racer_number == 1 or racer_number == 2:
-                params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week, racer_number)
+                params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                          match.week, racer_number)
                 cursor.execute(
                     "SELECT flags "
                     "FROM race_data "
@@ -911,7 +914,9 @@ class CondorDB(object):
                 except ValueError:
                     self._log_warning('Error parsing an argument in CondorDB.get_score with '
                                       'racer_1_id = <{0}>, racer_2_id = <{1}>, week_number = <{2}>.'.format(
-                                        self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week))
+                                        self._get_racer_id(match.racer_1),
+                                        self._get_racer_id(match.racer_2),
+                                        match.week))
 
         finally:
             self._close()
@@ -994,7 +999,6 @@ class CondorDB(object):
     def get_race_flags(self, match, race_number):
         try:
             self._connect()
-            to_return = None
             cursor = self._db_conn.cursor()
 
             params = (self._get_racer_id(match.racer_1),
@@ -1037,8 +1041,9 @@ class CondorDB(object):
                 found = True
                 contested = int(row[0])
             if not found:
-                self._log_warning('Couldn\'t set a race contested, because I couldn\'t find it. Racers: {0} v {1}.'.format(
-                    match.racer_1.twitch_name, match.racer_2.twitch_name))
+                self._log_warning(
+                    'Couldn\'t set a race contested, because I couldn\'t find it. Racers: {0} v {1}.'.format(
+                        match.racer_1.twitch_name, match.racer_2.twitch_name))
                 return
 
             if int(contesting_user.id) == int(match.racer_1.discord_id):
