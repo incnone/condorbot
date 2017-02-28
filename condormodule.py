@@ -112,6 +112,41 @@ class UpdateGSheetSchedule(command.CommandType):
             raise e
 
 
+class Vod(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'vod')
+        self.help_text = 'Add a link to a vod to the GSheet for a given match. Usage is `.vod <racer1> ' \
+                         '<racer2> <vod URL>`, where `<racer1>` and `<racer2>` are the RTMP names of the racers in ' \
+                         'the match, and `<vod URL>` is the full URL to the vod.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.necrobot.main_channel
+
+    async def _do_execute(self, cmd):
+        if len(cmd.args) != 3:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Error: Wrong number of arguments for `.vod`.')
+        else:
+            # find the match
+            racer_1 = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
+            racer_2 = self._cm.condordb.get_from_rtmp_name(cmd.args[1])
+            match = self._cm.condordb.get_match(racer_1, racer_2)
+            if not match:
+                await self._cm.necrobot.client.send_message(
+                    cmd.channel,
+                    'Error: Couldn\'t find a match between {0} and {1}.'.format(cmd.args[0], cmd.args[1]))
+                return
+
+            url_link = cmd.args[2]
+            await self._cm.condorsheet.add_vod_link(match, url_link)
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'Added a vod for the match {0}-{1}.'.format(
+                    racer_1.escaped_unique_name, racer_2.escaped_unique_name))
+
+
 class Cawmentate(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'cawmentate')
@@ -1178,6 +1213,7 @@ class CondorModule(command.Module):
                               Timezone(self),
                               Unconfirm(self),
                               UserInfo(self),
+                              Vod(self),
                               Remind(self),
                               ForceBeginMatch(self),
                               ForceConfirm(self),

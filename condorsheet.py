@@ -335,3 +335,23 @@ class CondorSheet(object):
             else:
                 self._log_warning('Couldn\'t find row for the match.')
         return False
+
+    async def add_vod_link(self, match, vodlink):
+        return await self._do_with_lock(self._add_vod_link, match, vodlink)
+
+    async def _add_vod_link(self, match, vodlink):
+        wks = self._get_wks(match.week)
+        if wks:
+            match_row = self._get_row(match, wks)
+            if match_row:
+                vod_column = wks.find('Vod:')
+                if vod_column:
+                    wks.update_cell(match_row, vod_column.col, vodlink)
+                else:
+                    self._log_warning('Couldn\'t find the Vod: column.')
+            else:
+                self._log_warning('Couldn\'t find row for the match.')
+        else:
+            self._log_warning('Couldn\'t find worksheet for Week {0}.'.format(match.week))
+
+        return None
