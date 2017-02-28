@@ -575,6 +575,7 @@ class Suggest(command.CommandType):
                     'If this is in error, contact CoNDOR Staff.'.format(cmd.author.mention))
                 return
 
+            # Parse the inputs as a datetime
             schedule_args = parse_schedule_args(cmd)
             if not schedule_args:
                 await self._cm.necrobot.client.send_message(
@@ -610,7 +611,8 @@ class Suggest(command.CommandType):
                     cmd.channel,
                     'Error parsing your date: {0}.'.format(str(e)))
                 return
-                
+
+            # Check if the racer has stored a valid timezone
             if not utc_dt:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
@@ -619,7 +621,9 @@ class Suggest(command.CommandType):
                     'CoNDOR Staff.'.format(cmd.author.mention, racer.timezone))
                 return
 
-            time_until = utc_dt - pytz.utc.localize(datetime.datetime.utcnow())
+            # Check if the scheduled time is in the past
+            utcnow = pytz.utc.localize(datetime.datetime.utcnow())
+            time_until = utc_dt - utcnow
             if not time_until.total_seconds() > 0:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
@@ -627,6 +631,20 @@ class Suggest(command.CommandType):
                         cmd.author.mention))
                 return                
 
+            # Check if the scheduled time is before friday at noon
+            today_date = datetime.date.today()
+            friday_date = today_date + datetime.timedelta(days=((4-today_date.weekday()) % 7))
+            friday_noon_eastern = pytz.timezone('US/Eastern').localize(
+                datetime.datetime.combine(friday_date, datetime.time(hour=12)))
+            time_until_friday = utc_dt - friday_noon_eastern
+            if time_until_friday.total_seconds() > 0:
+                await self._cm.necrobot.client.send_message(
+                    cmd.channel,
+                    '{0}: Error: Matches must be scheduled before next Friday at noon US/Eastern.'.format(
+                        cmd.author.mention))
+                return
+
+            # Schedule the match
             match.schedule(utc_dt, racer)
 
             # update the db
