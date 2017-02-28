@@ -1413,7 +1413,7 @@ class CondorModule(command.Module):
             display_text = 'Next match: \n'
 
         for match in match_list:
-            display_text += '\N{BULLET} **{0}** - **{1}**. \n'.format(
+            display_text += '\N{BULLET} **{0}** - **{1}**'.format(
                 match.racer_1.unique_name,
                 match.racer_2.unique_name)
             if match.league != CondorLeague.NONE:
@@ -1470,7 +1470,7 @@ class CondorModule(command.Module):
             match.racer_2.escaped_unique_name)
         if match.league != CondorLeague.NONE:
             alert_text += '({0}) '.format(match.league)
-        alert_text += 'is scheduled to begin in {2} minutes.\n'.format(minutes_until_match)
+        alert_text += 'is scheduled to begin in {0} minutes.\n'.format(minutes_until_match)
         if cawmentator:
             alert_text += 'Cawmentary: http://www.twitch.tv/{0} \n'.format(cawmentator)
         alert_text += 'RTMP: http://rtmp.condorleague.tv/#{0}/{1} \n'.format(
