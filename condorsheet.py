@@ -115,7 +115,7 @@ class CondorSheet(object):
             lr_addr = wks.get_addr_int(racer_1_footcell.row-1, racer_1_footcell.col+1)
             racers = wks.range('{0}:{1}'.format(ul_addr, lr_addr))
 
-            for cell in grouper(racers, 2, None):
+            for cell in grouper(racers, 3, None):
                 racer_1 = self._db.get_from_rtmp_name(cell[1].value.rstrip(' '), register=True)
                 racer_2 = self._db.get_from_rtmp_name(cell[2].value.rstrip(' '), register=True)
                 if racer_1 and racer_2:
