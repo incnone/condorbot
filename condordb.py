@@ -217,9 +217,9 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
-                      match.week, match.flags, match.number_of_races, match.flags, match.number_of_races,
-                      match.league.value)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,
+                      match.flags, match.number_of_races, match.league.value,
+                      match.flags, match.number_of_races, match.league.value)
             cursor.execute(
                 "INSERT INTO match_data (racer_1_id, racer_2_id, week_number, flags, number_of_races, league) "
                 "VALUES (%s,%s,%s,%s,%s,%s) "
