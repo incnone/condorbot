@@ -1418,7 +1418,7 @@ class CondorModule(command.Module):
                 match.racer_2.unique_name)
             if match.league != CondorLeague.NONE:
                 display_text += ' ({0})'.format(match.league)
-            display_text += ': {0}. \n'.format(condortimestr.timedelta_to_string(match.time - utcnow))
+            display_text += ': {0} \n'.format(condortimestr.timedelta_to_string(match.time - utcnow, punctuate=True))
             match_cawmentator = await self.condorsheet.get_cawmentary(match)
             if match_cawmentator:
                 display_text += '    Cawmentary: http://www.twitch.tv/{0} \n'.format(match_cawmentator)

@@ -2,8 +2,8 @@ import calendar
 import datetime
 
 
-def timedelta_to_string(td):
-    if td < datetime.timedelta(seconds=0):
+def timedelta_to_string(td, punctuate=False):
+    if punctuate and td < datetime.timedelta(minutes=1):
         return 'Right now!'
 
     hrs = td.seconds // 3600
@@ -17,7 +17,10 @@ def timedelta_to_string(td):
     if mins > 0:
         output_str += '{} minutes, '.format(mins)
 
-    return output_str[:-2]
+    if punctuate:
+        return output_str[:-2] + '.'
+    else:
+        return output_str[:-2]
 
 
 def get_time_str(dt):
