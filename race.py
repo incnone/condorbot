@@ -160,6 +160,11 @@ class Race(object):
     def is_before_race(self):
         return self._status < RaceStatus['racing']
 
+    # True if the race is paused
+    @property
+    def is_paused(self):
+        return self._status == RaceStatus['paused']
+
     # True if the race is finalized or cancelled
     @property
     def complete(self):

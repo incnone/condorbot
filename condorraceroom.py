@@ -176,16 +176,46 @@ class Time(command.CommandType):
             await self._room.write('The current race time is {}.'.format(self._room.race.current_time_str))
 
 
-# class ForceCancel(command.CommandType):
-#     def __init__(self, race_room):
-#         command.CommandType.__init__(self, 'forcecancel')
-#         self.help_text = 'Cancels the race.'
-#         self.suppress_help = True
-#         self._room = race_room
-#
-#     async def _do_execute(self, cmd):
-#         if self._room.race and self._room.is_race_admin(cmd.author):
-#             await self._room.cancel_race()
+class Pause(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'pause')
+        self.help_text = 'Pause the race, and alert the racers.'
+        self._room = race_room
+
+    async def _do_execute(self, cmd):
+        if self._room.race and self._room.is_race_admin(cmd.author):
+            mention_str = ''
+            for _, racer in self._room.race.racers.items():
+                mention_str += racer.member.mention + ', '
+            if mention_str == '':
+                mention_str = ', '
+            await self._room.write('{0}: Please pause.'.format(mention_str[:-2]))
+            await self._room.race.pause()
+
+
+class Unpause(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'unpause')
+        self.help_text = 'Unpause the race.'
+        self._room = race_room
+
+    async def _do_execute(self, cmd):
+        if self._room.race and self._room.is_race_admin(cmd.author):
+            if not self._room.race.is_paused:
+                await self._room.write('The race is not paused.')
+                return
+
+            await self._room.write('The race will continue in 5 seconds.')
+            await asyncio.sleep(2)
+            await self._room.write('3')
+            await asyncio.sleep(1)
+            await self._room.write('2')
+            await asyncio.sleep(1)
+            await self._room.write('1')
+            await asyncio.sleep(1)
+            await self._room.write('GO!')
+
+            await self._room.race.unpause()
 
 
 class ForceForfeit(command.CommandType):
@@ -410,6 +440,8 @@ class RaceRoom(command.Module):
                               Cancel(self),
                               Time(self),
                               Contest(self),
+                              Pause(self),
+                              Unpause(self),
                               # ForceCancel(self),
                               ForceChangeWinner(self),
                               ForceForfeit(self),

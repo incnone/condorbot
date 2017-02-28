@@ -6,3 +6,4 @@ Condorbot TODO
 - Some race completion times in the database are still incorrect
 - Room topics do not update during races
 - `.forcenewrace` is intermittently broken
+- Add pause command
