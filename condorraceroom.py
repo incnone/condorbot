@@ -620,21 +620,7 @@ class RaceRoom(command.Module):
             # in which case do it immediately
 
             if not self.race:
-                await self.alert_racers()            
-                for racer in self.match.racers:
-                    if racer not in self.entered_racers:
-                        discord_name = ''
-                        if racer.discord_name:
-                            discord_name = ' (Discord name: {0})'.format(racer.discord_name)
-                        minutes_until_race = int((self.match.time_until_match.total_seconds() + 30) // 60)
-                        await self.alert_staff(
-                            'Alert: {0}{1} has not yet shown up for their match, which is scheduled in '
-                            '{2} minutes in {3}.'.format(
-                                racer.escaped_unique_name,
-                                discord_name,
-                                minutes_until_race,
-                                self.channel.mention))
-
+                await self.alert_racers()
                 await self._cm.post_match_alert(self.match)
 
             await asyncio.sleep(self.match.time_until_match.total_seconds())

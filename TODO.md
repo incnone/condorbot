@@ -5,4 +5,7 @@ Condorbot TODO
 - `.unconfirm` during the 30 mins before a race doesn't delete the race room
 - Some race completion times in the database are still incorrect
 - Room topics do not update during races
+- Race doesn't give the 30 minute warning
+- Get rid of `.here` and associated notifications
 - `.forcenewrace` is intermittently broken
+- Fix the "next friday" check to be independent of the computer's local timezone
