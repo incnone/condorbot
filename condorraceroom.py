@@ -430,6 +430,7 @@ class RaceRoom(command.Module):
         self.cancelling_racers = []                                 # Racers that have typed .cancel
 
         self._cm = condor_module           
+        self._race_countdown_future = None
 
         self.command_types = [command.DefaultHelp(self),
                               Here(self),
@@ -476,7 +477,12 @@ class RaceRoom(command.Module):
     # Set up the leaderboard etc. Should be called after creation; code not put into __init__ b/c coroutine
     async def initialize(self):
         await self.update_leaderboard()
-        asyncio.ensure_future(self.countdown_to_match_start())
+        self._race_countdown_future = asyncio.ensure_future(self.countdown_to_match_start())
+
+    # Clean up unfinished tasks
+    async def close(self):
+        if self._race_countdown_future is not None:
+            self._race_countdown_future.cancel()
 
     # Write text to the raceroom. Return a Message for the text written
     async def write(self, text):
