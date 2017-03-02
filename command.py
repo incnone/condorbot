@@ -114,6 +114,9 @@ class Module(object):
     async def initialize(self):
         pass
 
+    async def close(self):
+        pass
+
     @property
     def client(self):
         return self.necrobot.client

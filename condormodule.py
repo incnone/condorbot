@@ -1248,6 +1248,10 @@ class CondorModule(command.Module):
         await self.update_schedule_channel()
         asyncio.ensure_future(self.schedule_channel_auto_updater())
 
+    async def close(self):
+        for room in self._racerooms:
+            room.close()
+
     @property
     def infostr(self):
         return 'CoNDOR'
@@ -1350,6 +1354,10 @@ class CondorModule(command.Module):
     async def reboot_race_room(self, match):
         channel = self.necrobot.find_channel_with_id(self.condordb.find_match_channel_id(match))
         if channel:
+            for room in self._racerooms:
+                if int(room.channel.id) == int(channel.id):
+                    room.close()
+
             self._racerooms = [room for room in self._racerooms if int(room.channel.id) != int(channel.id)]
             self.make_race_room(match)
 
@@ -1369,6 +1377,8 @@ class CondorModule(command.Module):
                 for room in self._racerooms:
                     if int(room.channel.id) == int(channel.id):
                         delete_raceroom_id = int(channel.id)
+                        room.close()
+
                 if delete_raceroom_id:
                     self._racerooms = [r for r in self._racerooms if not (int(r.channel.id) == delete_raceroom_id)]
 

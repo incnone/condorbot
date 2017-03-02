@@ -22,6 +22,9 @@ class Necrobot(object):
 
     # Initializes object; call after client has been logged in to discord
     def post_login_init(self, server_id, admin_id=0):
+        for module in self.modules:
+            module.close()
+
         self.server = None
         self.prefs = None
         self.modules.clear()
