@@ -9,3 +9,6 @@ Condorbot TODO
 - Get rid of `.here` and associated notifications
 - `.forcenewrace` is intermittently broken
 - Fix the "next friday" check to be independent of the computer's local timezone
+- Add `-language` to `.cawmentate` command, and allow users to set a default
+- Add `curl` events to race start/end to auto-record bots, like Mac asks
+- Put stream links in <> so as to disable previews
