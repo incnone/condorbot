@@ -182,7 +182,7 @@ class Necrobot(object):
             .stream eladdifficult
             .timezone America/Toronto
             ```
-            See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list of timezones.
+            See <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones> for a list of timezones.
             (Please prefer to choose timezones like "America/Toronto" to timezones like "EDT"; the former should be
              better at taking local daylight-savings rules into account.)"""))
 

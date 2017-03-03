@@ -675,7 +675,7 @@ class Timezone(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'timezone')
         self.timezone_loc = 'https://github.com/incnone/condorbot/blob/master/data/tz_list.txt'
-        self.help_text = 'Register a time zone with your account. Usage is `.timezone <zonename>`. See {0} for a ' \
+        self.help_text = 'Register a time zone with your account. Usage is `.timezone <zonename>`. See <{0}> for a ' \
                          'list of recognized time zones; these strings should be input exactly as-is, e.g., ' \
                          '`.timezone US/Eastern`.'.format(self.timezone_loc)
         self._cm = condor_module
