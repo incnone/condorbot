@@ -353,7 +353,7 @@ class CloseWeek(command.CommandType):
 
 class NextRace(command.CommandType):
     def __init__(self, condor_module):
-        command.CommandType.__init__(self, 'nextrace', 'nextmatch', 'next')
+        command.CommandType.__init__(self, 'next', 'nextrace', 'nextmatch')
         self.help_text = 'Give information about the next upcoming race(s).'
         self._cm = condor_module
 
