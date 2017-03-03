@@ -88,18 +88,13 @@ class Necrobot(object):
     def schedule_channel(self):
         return self._schedule_channel
 
-    # Return a list of condor staff
+    # Return the condor staff role
     @property
     def condor_staff(self):
-        ret_str = ''
-        for member in self.server.members:
-            for role in member.roles:
-                if role.name == 'CoNDOR Staff':
-                    ret_str += member.mention + ' '
-        if ret_str:
-            return ret_str[:-1]
-        else:
-            return ''
+        for role in self.server.roles:
+            if role.name == 'CoNDOR Staff':
+                return role
+        return None
     
     # Get a list of all admin roles on the server
     @property

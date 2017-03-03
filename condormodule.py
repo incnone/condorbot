@@ -472,9 +472,13 @@ class Staff(command.CommandType):
         await self._cm.necrobot.client.send_message(
             self._cm.necrobot.notifications_channel,
             'Alert: `.staff` called by {0} in channel {1}.'.format(cmd.author.mention, cmd.channel.mention))
-        await self._cm.necrobot.client.send_message(
-            cmd.channel,
-            '{0}: Alerting CoNDOR Staff: {1}.'.format(cmd.author.mention, self._cm.necrobot.condor_staff))
+        condor_staff_role = self._cm.necrobot.condor_staff
+        if condor_staff_role is not None:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                '{0}: Alerting CoNDOR Staff: {1}.'.format(
+                    cmd.author.mention,
+                    self._cm.necrobot.condor_staff_role.mention))
 
 
 class Stream(command.CommandType):
