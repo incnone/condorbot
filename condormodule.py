@@ -692,7 +692,7 @@ class Timezone(command.CommandType):
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
                 '{0}: I was unable to parse your timezone because you gave too many arguments. '
-                'See {1} for a list of timezones.'.format(cmd.author.mention, self.timezone_loc))
+                'See <{1}> for a list of timezones.'.format(cmd.author.mention, self.timezone_loc))
         else:
             tz_name = cmd.args[0]
             if tz_name in pytz.common_timezones:
@@ -703,7 +703,7 @@ class Timezone(command.CommandType):
             else:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
-                    '{0}: I was unable to parse your timezone. See {1} for a list of timezones.'.format(
+                    '{0}: I was unable to parse your timezone. See <{1}> for a list of timezones.'.format(
                         cmd.author.mention, self.timezone_loc))
 
 
@@ -1211,6 +1211,39 @@ class ForceTransferAccount(command.CommandType):
                     cmd.author.mention, from_racer.escaped_twitch_name, to_member.mention))
 
 
+class TimezoneAlert(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'timezonealert')
+        self.help_text = 'Sends an alert to all users with uncommon timezone registrations.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel.is_private
+
+    async def _do_execute(self, cmd):
+        print('doing tz alert')
+        if not self._cm.necrobot.is_admin(cmd.author):
+            return
+
+        racer_list = self._cm.condordb.get_all_racers()
+        for racer in racer_list:
+            if racer.timezone not in pytz.common_timezones:
+                racer_member = self._cm.necrobot.find_member_with_id(racer.discord_id)
+                if racer_member is not None:
+                    timezone_page = 'https://github.com/incnone/condorbot/blob/master/data/tz_list.txt'
+                    await self._cm.client.send_message(
+                        racer_member,
+                        'You are receiving this automated alert because your selected timezone, `{0}`, is no '
+                        'longer registered in my timezone database. This probably means that '
+                        'it does not properly account for your local Daylight Savings Time. \n\n'
+                        'I suggest you re-register your timezone with `.timezone`. (This can be done via PM.) \n\n'
+                        'See <{1}> for a list of supported timezones; your timezone should look like '
+                        '`Continent/Nearby City`. \n\n'
+                        'Sorry for the extra trouble!'.format(
+                            racer.timezone,
+                            timezone_page))
+
+
 class CondorModule(command.Module):
     def __init__(self, necrobot):
         command.Module.__init__(self, necrobot)
@@ -1245,6 +1278,7 @@ class CondorModule(command.Module):
                               ForceUpdate(self),
                               ForceTransferAccount(self),
                               UpdateGSheetSchedule(self),
+                              TimezoneAlert(self),
                               ]
 
     async def initialize(self):

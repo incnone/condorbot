@@ -100,6 +100,20 @@ class CondorDB(object):
         finally:
             self._close()
 
+    def get_all_racers(self):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor(buffered=True)
+            racer_list = []
+            cursor.execute(
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+                "FROM user_data")
+            for row in cursor:
+                racer_list.append(self._get_racer_from_row(row))
+            return racer_list
+        finally:
+            self._close()
+
     def get_from_discord_id(self, discord_id):
         try:
             self._connect()
