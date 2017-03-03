@@ -262,7 +262,6 @@ class CondorDB(object):
                 params)
 
             self._db_conn.commit()
-            print('done')
         finally:
             self._close()
 
@@ -351,7 +350,7 @@ class CondorDB(object):
         finally:
             self._close()
 
-    def re_register_rtmp(self, discord_member, rtmp_name):
+    def register_rtmp(self, discord_member, rtmp_name):
         try:
             self._connect()
             cursor = self._db_conn.cursor()
@@ -367,7 +366,7 @@ class CondorDB(object):
             for _ in cursor:
                 found = True
             if not found:
-                return False
+                return self._register_rtmp_no_duplicate(discord_member, rtmp_name)
 
             racer = self.get_from_discord_id(discord_member.id)
             if racer is None:
@@ -391,7 +390,7 @@ class CondorDB(object):
         finally:
             self._close()
 
-    def register_rtmp(self, discord_member, rtmp_name):
+    def _register_rtmp_no_duplicate(self, discord_member, rtmp_name):
         try:
             self._connect()
             self.register(discord_member)

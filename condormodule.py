@@ -437,7 +437,7 @@ class RTMP(command.CommandType):
         discord_member = discord_members[0]
         rtmp_name = cmd.args[1]
 
-        success = self._cm.condordb.re_register_rtmp(discord_member, rtmp_name)
+        success = self._cm.condordb.register_rtmp(discord_member, rtmp_name)
         if success:
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
@@ -1221,7 +1221,6 @@ class TimezoneAlert(command.CommandType):
         return channel.is_private
 
     async def _do_execute(self, cmd):
-        print('doing tz alert')
         if not self._cm.necrobot.is_admin(cmd.author):
             return
 
@@ -1242,6 +1241,10 @@ class TimezoneAlert(command.CommandType):
                         'Sorry for the extra trouble!'.format(
                             racer.timezone,
                             timezone_page))
+
+        await self._cm.client.send_message(
+            cmd.channel,
+            'Alerted users with out-of-date timezone info.')
 
 
 class CondorModule(command.Module):
