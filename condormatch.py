@@ -129,7 +129,7 @@ class CondorMatch(object):
         FULL_FLAG = (int(1) << 10) - 1
         return FULL_FLAG - flag
 
-    def __init__(self, racer_1, racer_2, week):
+    def __init__(self, racer_1, racer_2, week, is_showcase=False):
         self._racer_1 = racer_1
         self._racer_2 = racer_2
         self._week = week
@@ -137,13 +137,17 @@ class CondorMatch(object):
         self._number_of_races = config.RACE_NUMBER_OF_RACES
         self.flags = 0
         self.league = CondorLeague.NONE
+        self.is_showcase = is_showcase
 
     @property
     def channel_name(self):
         name_1 = self.racer_1.unique_name.lower()
         name_2 = self.racer_2.unique_name.lower()
         racer_name_list = sorted([name_1, name_2])
-        return '{0}-{1}'.format(racer_name_list[0], racer_name_list[1])
+        cname = '{0}-{1}'.format(racer_name_list[0], racer_name_list[1])
+        if self.is_showcase:
+            cname = 'promo-' + cname
+        return cname
 
     @property
     def racers(self):

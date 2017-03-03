@@ -231,19 +231,22 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase,
                       match.flags, match.number_of_races, match.league.value,
                       match.flags, match.number_of_races, match.league.value)
             cursor.execute(
-                "INSERT INTO match_data (racer_1_id, racer_2_id, week_number, flags, number_of_races, league) "
-                "VALUES (%s,%s,%s,%s,%s,%s) "
+                "INSERT INTO match_data "
+                "(racer_1_id, racer_2_id, week_number, is_showcase, flags, number_of_races, league) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s) "
                 "ON DUPLICATE KEY UPDATE flags=%s, number_of_races=%s, league=%s",
                 params)
 
-            params = (channel_id, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week)
+            params = (channel_id, self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
-                "REPLACE INTO channel_data (channel_id, racer_1_id, racer_2_id, week_number) "
-                "VALUES (%s,%s,%s,%s) ",
+                "REPLACE INTO channel_data (channel_id, racer_1_id, racer_2_id, week_number, is_showcase) "
+                "VALUES (%s,%s,%s,%s,%s) ",
                 params)
 
             self._db_conn.commit()
@@ -439,13 +442,14 @@ class CondorDB(object):
         try:
             self._connect()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase,)
 
             cursor = self._db_conn.cursor()
             cursor.execute(
                 "SELECT channel_id "
                 "FROM channel_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
                 return int(row[0])
@@ -483,13 +487,13 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
 
             cursor.execute(
-                "SELECT channel_id,racer_1_id,racer_2_id,week_number "
+                "SELECT channel_id,racer_1_id,racer_2_id,week_number,is_showcase "
                 "FROM channel_data")
             for row in cursor:
                 if int(row[3]) != week:
                     racer_1 = self._get_racer_from_id(row[1])
                     racer_2 = self._get_racer_from_id(row[2])
-                    match = CondorMatch(racer_1, racer_2, row[3])
+                    match = CondorMatch(racer_1, racer_2, int(row[3]), bool(row[4]))
                     return int(row[0]), match
 
         finally:
@@ -531,7 +535,7 @@ class CondorDB(object):
             self._close()
 
     # Gets the most recent match if no week given
-    def get_match(self, racer_1, racer_2, week_number=None):
+    def get_match(self, racer_1, racer_2, week_number=None, is_showcase=False):
         try:
             self._connect()
             if week_number is None:
@@ -549,30 +553,30 @@ class CondorDB(object):
                 for row in cursor:
                     try:
                         week_number = int(row[0])
-                        return self.get_match(racer_1, racer_2, week_number)
+                        return self.get_match(racer_1, racer_2, week_number, is_showcase)
                     except ValueError:
                         self._log_warning('ValueError in parsing week number {}.'.format(row[0]))
             else:
-                match_try = self._get_match(racer_1, racer_2, week_number)
-                if match_try:
+                match_try = self._get_match(racer_1, racer_2, week_number, is_showcase)
+                if match_try is not None:
                     return match_try
                 else:
-                    return self._get_match(racer_2, racer_1, week_number)
+                    return self._get_match(racer_2, racer_1, week_number, is_showcase)
         finally:
             self._close()
 
-    def _get_match(self, racer_1, racer_2, week_number):
+    def _get_match(self, racer_1, racer_2, week_number, is_showcase):
         try:
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number)
+            params = (self._get_racer_id(racer_1), self._get_racer_id(racer_2), week_number, is_showcase)
             cursor.execute(
                 "SELECT timestamp,flags,number_of_races,league FROM match_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
-                match = CondorMatch(racer_1, racer_2, week_number)
+                match = CondorMatch(racer_1, racer_2, week_number, is_showcase)
                 if row[0]:
                     match.set_from_timestamp(int(row[0]))
                 match.flags = int(row[1])
@@ -587,11 +591,12 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT channel_id "
                 "FROM channel_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
                 return int(row[0])
@@ -605,7 +610,7 @@ class CondorDB(object):
 
             params = (channel_id,)
             cursor.execute(
-                "SELECT racer_1_id,racer_2_id,week_number "
+                "SELECT racer_1_id,racer_2_id,week_number,is_showcase "
                 "FROM channel_data "
                 "WHERE channel_id=%s",
                 params)
@@ -616,7 +621,7 @@ class CondorDB(object):
                     self._log_warning('Error: couldn\'t find racers in CondorDB.get_match_from_channel_id.')
                     return None
                 else:
-                    return self.get_match(racer_1, racer_2, int(row[2]))
+                    return self.get_match(racer_1, racer_2, int(row[2]), bool(row[3]))
         finally:
             self._close()
 
@@ -644,11 +649,12 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
 
             params = (match.timestamp, match.flags, match.league.value,
-                      self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+                      self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "UPDATE match_data "
                 "SET timestamp=%s,flags=%s,league=%s "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s", params)
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s", params)
             self._db_conn.commit()
         finally:
             self._close()
@@ -660,19 +666,18 @@ class CondorDB(object):
             cursor = self._db_conn.cursor(buffered=True)
 
             cursor.execute(
-                "SELECT racer_1_id,racer_2_id,week_number,timestamp,flags,number_of_races,league "
+                "SELECT racer_1_id,racer_2_id,week_number,is_showcase,timestamp,flags,number_of_races,league "
                 "FROM match_data "
                 "ORDER BY timestamp ASC")
             for row in cursor:
                 racer_1 = self._get_racer_from_id(row[0])
                 racer_2 = self._get_racer_from_id(row[1])
-                week = int(row[2])
-                match = CondorMatch(racer_1, racer_2, week)
-                match.flags = int(row[4])
-                match.set_number_of_races(int(row[5]))
-                match.set_league_from_value(int(row[6]))
+                match = CondorMatch(racer_1, racer_2, int(row[2]), bool(row[3]))
+                match.flags = int(row[5])
+                match.set_number_of_races(int(row[6]))
+                match.set_league_from_value(int(row[7]))
                 if match.confirmed and not match.played:
-                    match.set_from_timestamp(int(row[3]))
+                    match.set_from_timestamp(int(row[4]))
                     if match.time - time > datetime.timedelta(minutes=-30):
                         matches.append(match)
 
@@ -685,11 +690,12 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT cawmentator_id "
                 "FROM match_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
                 return self.get_from_discord_id(row[0])
@@ -703,11 +709,12 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
 
             match_found = False
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT cawmentator_id "
                 "FROM match_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for _ in cursor:
                 match_found = True
@@ -718,7 +725,8 @@ class CondorDB(object):
                 cursor.execute(
                     "UPDATE match_data "
                     "SET cawmentator_id=%s "
-                    "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s", params)
+                    "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
+                    params)
                 self._db_conn.commit()
             else:
                 self._log_warning('Error: tried to add cawmentary to an unscheduled match.')
@@ -730,11 +738,12 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase,)
             cursor.execute(
                 "UPDATE match_data "
                 "SET cawmentator_id=0 "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             self._db_conn.commit()
         finally:
@@ -747,11 +756,12 @@ class CondorDB(object):
 
             num_wins_r1 = 0
             num_wins_r2 = 0
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT flags,winner "
                 "FROM race_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
                 if not row[0] & CondorDB.RACE_CANCELLED_FLAG:
@@ -770,11 +780,12 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
 
             num_finished = 0
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT flags "
                 "FROM race_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
                 if not row[0] & CondorDB.RACE_CANCELLED_FLAG:
@@ -793,22 +804,23 @@ class CondorDB(object):
             racer_number = match.racer_number(racer)
             if racer_number == 1 or racer_number == 2:
                 params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
-                          match.week, racer_number)
+                          match.week, match.is_showcase, racer_number)
                 cursor.execute(
                     "SELECT flags "
                     "FROM race_data "
-                    "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND winner=%s",
+                    "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s AND winner=%s",
                     params)
                 for row in cursor:
                     if not (int(row[0]) & CondorDB.RACE_CANCELLED_FLAG):
                         num_wins += 1
 
                 if count_draws:
-                    params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week, 0)
+                    params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                              match.week, match.is_showcase, 0)
                     cursor.execute(
                         "SELECT flags "
                         "FROM race_data "
-                        "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND winner=%s",
+                        "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s AND winner=%s",
                         params)
                     for row in cursor:
                         if not (int(row[0]) & CondorDB.RACE_CANCELLED_FLAG):
@@ -827,11 +839,12 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT race_number "
                 "FROM race_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s "
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s"
                 "ORDER BY race_number DESC",
                 params)
             for row in cursor:
@@ -846,11 +859,12 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT race_number,flags "
                 "FROM race_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s "
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s"
                 "ORDER BY race_number ASC",
                 params)
             for row in cursor:
@@ -875,11 +889,12 @@ class CondorDB(object):
             flags = match.flags | CondorMatch.FLAG_PLAYED
             number_of_races = match.number_of_races
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT winner,contested,flags "
                 "FROM race_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
                 if int(row[1]):
@@ -896,11 +911,12 @@ class CondorDB(object):
                         draws += 1
 
             params = (r1_wins, r2_wins, draws, noplays, num_cancelled, flags, number_of_races,
-                      self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+                      self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "UPDATE match_data "
                 "SET racer_1_wins=%s, racer_2_wins=%s, draws=%s, noplays=%s, cancels=%s, flags=%s, number_of_races=%s "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             self._db_conn.commit()
         finally:
@@ -912,11 +928,12 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
+            params = (self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2),
+                      match.week, match.is_showcase)
             cursor.execute(
                 "SELECT racer_1_wins,racer_2_wins,draws "
                 "FROM match_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s",
                 params)
             for row in cursor:
                 try:
@@ -926,10 +943,12 @@ class CondorDB(object):
                     return [r1wins, r2wins, draws]
                 except ValueError:
                     self._log_warning('Error parsing an argument in CondorDB.get_score with '
-                                      'racer_1_id = <{0}>, racer_2_id = <{1}>, week_number = <{2}>.'.format(
+                                      'racer_1_id = <{0}>, racer_2_id = <{1}>, week_number = <{2}>,'
+                                      'is_showcase= <{3}>.'.format(
                                         self._get_racer_id(match.racer_1),
                                         self._get_racer_id(match.racer_2),
-                                        match.week))
+                                        match.week,
+                                        match.is_showcase))
 
         finally:
             self._close()
@@ -948,6 +967,7 @@ class CondorDB(object):
             params = (self._get_racer_id(match.racer_1),
                       self._get_racer_id(match.racer_2),
                       match.week,
+                      match.is_showcase,
                       race_number,
                       timestamp,
                       seed,
@@ -960,9 +980,9 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
             cursor.execute(
                 "REPLACE INTO race_data "
-                "(racer_1_id, racer_2_id, week_number, race_number, timestamp, "
+                "(racer_1_id, racer_2_id, week_number, is_showcase, race_number, timestamp, "
                 "seed, racer_1_time, racer_2_time, winner, contested, flags) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", params)
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", params)
 
             self._db_conn.commit()
 
@@ -980,12 +1000,13 @@ class CondorDB(object):
                       self._get_racer_id(match.racer_1),
                       self._get_racer_id(match.racer_2),
                       match.week,
+                      match.is_showcase,
                       race_number,)
 
             cursor.execute(
                 "UPDATE race_data "
                 "SET winner=%s, flags=%s "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND race_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s AND race_number=%s",
                 params)
             self._db_conn.commit()
         finally:
@@ -1000,11 +1021,13 @@ class CondorDB(object):
                       self._get_racer_id(match.racer_1),
                       self._get_racer_id(match.racer_2),
                       match.week,
+                      match.is_showcase,
                       race_number,)
             cursor.execute(
                 "UPDATE race_data "
                 "SET winner=%s "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND race_number=%s", params)
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s AND race_number=%s",
+                params)
             self._db_conn.commit()
         finally:
             self._close()
@@ -1017,12 +1040,13 @@ class CondorDB(object):
             params = (self._get_racer_id(match.racer_1),
                       self._get_racer_id(match.racer_2),
                       match.week,
+                      match.is_showcase,
                       race_number,)
 
             cursor.execute(
                 "SELECT flags "
                 "FROM race_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND race_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s AND race_number=%s",
                 params)
             for row in cursor:
                 return int(row[0])
@@ -1042,13 +1066,14 @@ class CondorDB(object):
             params = (self._get_racer_id(match.racer_1),
                       self._get_racer_id(match.racer_2),
                       match.week,
+                      match.is_showcase,
                       race_number,)
             found = False
             contested = 0
             cursor.execute(
                 "SELECT contested "
                 "FROM race_data "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND race_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s AND race_number=%s",
                 params)
             for row in cursor:
                 found = True
@@ -1070,11 +1095,12 @@ class CondorDB(object):
                       self._get_racer_id(match.racer_1),
                       self._get_racer_id(match.racer_2),
                       match.week,
+                      match.is_showcase,
                       race_number,)
             cursor.execute(
                 "UPDATE race_data "
                 "SET contested=%s "
-                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND race_number=%s",
+                "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s AND is_showcase=%s AND race_number=%s",
                 params)
             self._db_conn.commit()
         finally:
