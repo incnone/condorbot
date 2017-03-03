@@ -386,7 +386,7 @@ class Register(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel == self._cm.necrobot.main_channel
+        return channel == self._cm.necrobot.main_channel or channel.is_private
 
     async def _do_execute(self, cmd):
         self._cm.condordb.register(cmd.author)
@@ -488,7 +488,7 @@ class Stream(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel == self._cm.necrobot.main_channel
+        return channel == self._cm.necrobot.main_channel or channel.is_private
 
     async def _do_execute(self, cmd):
         if len(cmd.args) != 1:
@@ -685,7 +685,7 @@ class Timezone(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel == self._cm.necrobot.main_channel
+        return channel == self._cm.necrobot.main_channel or channel.is_private
 
     async def _do_execute(self, cmd):
         if len(cmd.args) != 1:
@@ -695,7 +695,7 @@ class Timezone(command.CommandType):
                 'See {1} for a list of timezones.'.format(cmd.author.mention, self.timezone_loc))
         else:
             tz_name = cmd.args[0]
-            if tz_name in pytz.all_timezones:
+            if tz_name in pytz.common_timezones:
                 self._cm.condordb.register_timezone(cmd.author, tz_name)
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
