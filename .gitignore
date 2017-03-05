@@ -19,3 +19,4 @@ data/fake_bot_config.txt
 data/real_bot_config.txt
 stuff.sql
 logging/*
+add_is_showcase.sql

@@ -1334,22 +1334,18 @@ class CondorModule(command.Module):
             # already_made_id = self.condordb.find_match_channel_id(match)
             already_made_id = None
 
+        deny_read = discord.PermissionOverwrite(read_messages=False)
+        permit_read = discord.PermissionOverwrite(read_messages=True)
         try:
-            channel = await self.client.create_channel(self.necrobot.server, match.channel_name)
+            channel = await self.client.create_channel(
+                self.necrobot.server,
+                match.channel_name,
+                discord.ChannelPermissions(target=self.necrobot.server.default_role, overwrite=deny_read))
         except discord.errors.HTTPException:
             self._log_warning('HTTPException while trying to create channel <{0}>.'.format(match.channel_name))
             raise
 
         channel_id = int(channel.id)
-
-        deny_read = discord.PermissionOverwrite()
-        permit_read = discord.PermissionOverwrite()
-        deny_read.read_messages = False
-        permit_read.read_messages = True
-        await self.client.edit_channel_permissions(channel, self.necrobot.server.default_role, deny_read)
-        asyncio.ensure_future(self.channel_alert(channel_id))
-
-        self.condordb.register_channel(match, channel_id)
 
         if match.racer_1.discord_id:
             racer_1 = self.necrobot.find_member_with_id(match.racer_1.discord_id)
@@ -1364,6 +1360,8 @@ class CondorModule(command.Module):
         for role in self.necrobot.admin_roles:
             await self.client.edit_channel_permissions(channel, role, permit_read)
 
+        asyncio.ensure_future(self.channel_alert(channel_id))
+        self.condordb.register_channel(match, channel_id)
         await self.update_match_channel(match)
         await self.send_channel_start_text(channel, match)
         return True
