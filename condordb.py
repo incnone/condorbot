@@ -740,6 +740,33 @@ class CondorDB(object):
         finally:
             self._close()
 
+    def drop_racer_from_week(self, racer, week):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+            racer_id = self._get_racer_id(racer)
+
+            params = (racer_id, racer_id, week)
+            cursor.execute(
+                "DELETE "
+                "FROM channel_data "
+                "WHERE (racer_1_id=%s OR racer_2_id=%s) AND week_number=%s",
+                params)
+            cursor.execute(
+                "DELETE "
+                "FROM race_data "
+                "WHERE (racer_1_id=%s OR racer_2_id=%s) AND week_number=%s",
+                params)
+            cursor.execute(
+                "DELETE "
+                "FROM match_data "
+                "WHERE (racer_1_id=%s OR racer_2_id=%s) AND week_number=%s",
+                params)
+
+            self._db_conn.commit()
+        finally:
+            self._close()
+
     def number_of_wins_of_leader(self, match):
         try:
             self._connect()

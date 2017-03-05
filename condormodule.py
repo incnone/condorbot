@@ -1248,6 +1248,50 @@ class TimezoneAlert(command.CommandType):
             'Alerted users with out-of-date timezone info.')
 
 
+class DropRacer(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'dropracer')
+        self.help_text = 'Drop a racer from a specified week. Usage is `.dropracer <rtmp_name> -week <week_number>.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.admin_channel
+
+    async def _do_execute(self, cmd):
+        if self._cm.necrobot.is_admin(cmd.author):
+            if len(cmd.args) != 3:
+                await self._cm.client.send_message(
+                    cmd.channel,
+                    '{0}: Error: Wrong number of args for `.dropracer`.'.format(cmd.author.mention))
+                return
+
+            if cmd.args[1] != '-week':
+                await self._cm.client.send_message(
+                    cmd.channel,
+                    '{0}: Error: Specify week to drop from with `-week`.'.format(cmd.author.mention))
+                return
+
+            rtmp_name = cmd.args[0]
+            racer = self._cm.condordb.get_from_rtmp_name(rtmp_name)
+            if racer is None:
+                await self._cm.client.send_message(
+                    cmd.channel,
+                    '{0}: Error: Couldn\'t find racer with RTMP name {1}.'.format(cmd.author.mention, rtmp_name))
+                return
+
+            try:
+                week = int(cmd.args[2])
+                self._cm.condordb.drop_racer_from_week(racer, week)
+                await self._cm.client.send_message(
+                    cmd.channel,
+                    '{0}: Dropped racer `{1}` from week {2}.'.format(cmd.author.mention, rtmp_name, week))
+            except ValueError:
+                await self._cm.client.send_message(
+                    cmd.channel,
+                    '{0}: Error: Couldn\'t parse {1} as a week..'.format(cmd.author.mention, cmd.args[2]))
+                return
+
+
 class CondorModule(command.Module):
     def __init__(self, necrobot):
         command.Module.__init__(self, necrobot)
@@ -1283,6 +1327,7 @@ class CondorModule(command.Module):
                               ForceTransferAccount(self),
                               UpdateGSheetSchedule(self),
                               TimezoneAlert(self),
+                              DropRacer(self),
                               ]
 
     async def initialize(self):
