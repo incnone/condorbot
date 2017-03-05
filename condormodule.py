@@ -1315,7 +1315,8 @@ class CondorModule(command.Module):
             if cmd.channel == room.channel:
                 await room.execute(cmd)
 
-    def _log_warning(self, s):
+    @staticmethod
+    def _log_warning(s):
         logging.getLogger('discord').warning(s)
 
     @staticmethod

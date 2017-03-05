@@ -105,7 +105,7 @@ async def on_ready():
     print('User id  : {0}'.format(client.user.id))
     print('-------------------------')
     print(' ')
-    necrobot.post_login_init(login_data.server_id, login_data.admin_id)
+    await necrobot.post_login_init(login_data.server_id, login_data.admin_id)
 
     necrobot.load_module(CondorModule(necrobot))
 
