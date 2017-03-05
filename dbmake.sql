@@ -32,7 +32,7 @@ CREATE TABLE match_data
   
 CREATE TABLE channel_data
 (
-    channel_id int,
+    channel_id bigint,
 	racer_1_id int NOT NULL,
 	racer_2_id int NOT NULL,
 	week_number int,

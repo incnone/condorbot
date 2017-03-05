@@ -2,6 +2,7 @@ import asyncio
 import codecs
 import datetime
 import discord
+import logging
 
 import calendar
 import pytz
@@ -478,7 +479,7 @@ class Staff(command.CommandType):
                 cmd.channel,
                 '{0}: Alerting CoNDOR Staff: {1}.'.format(
                     cmd.author.mention,
-                    self._cm.necrobot.condor_staff_role.mention))
+                    condor_staff_role.mention))
 
 
 class Stream(command.CommandType):
@@ -1291,7 +1292,7 @@ class CondorModule(command.Module):
 
     async def close(self):
         for room in self._racerooms:
-            room.close()
+            await room.close()
 
     @property
     def infostr(self):
@@ -1314,6 +1315,9 @@ class CondorModule(command.Module):
             if cmd.channel == room.channel:
                 await room.execute(cmd)
 
+    def _log_warning(self, s):
+        logging.getLogger('discord').warning(s)
+
     @staticmethod
     def get_match_channel_name(match):
         return match.channel_name
@@ -1329,7 +1333,12 @@ class CondorModule(command.Module):
             # already_made_id = self.condordb.find_match_channel_id(match)
             already_made_id = None
 
-        channel = await self.client.create_channel(self.necrobot.server, self.get_match_channel_name(match))
+        try:
+            channel = await self.client.create_channel(self.necrobot.server, match.channel_name)
+        except discord.errors.HTTPException:
+            self._log_warning('HTTPException while trying to create channel <{0}>.'.format(match.channel_name))
+            raise
+
         channel_id = int(channel.id)
 
         deny_read = discord.PermissionOverwrite()
@@ -1397,7 +1406,7 @@ class CondorModule(command.Module):
         if channel:
             for room in self._racerooms:
                 if int(room.channel.id) == int(channel.id):
-                    room.close()
+                    await room.close()
 
             self._racerooms = [room for room in self._racerooms if int(room.channel.id) != int(channel.id)]
             self.make_race_room(match)
@@ -1418,7 +1427,7 @@ class CondorModule(command.Module):
                 for room in self._racerooms:
                     if int(room.channel.id) == int(channel.id):
                         delete_raceroom_id = int(channel.id)
-                        room.close()
+                        await room.close()
 
                 if delete_raceroom_id:
                     self._racerooms = [r for r in self._racerooms if not (int(r.channel.id) == delete_raceroom_id)]

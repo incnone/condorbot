@@ -21,9 +21,9 @@ class Necrobot(object):
         self._wants_to_quit = False
 
     # Initializes object; call after client has been logged in to discord
-    def post_login_init(self, server_id, admin_id=0):
+    async def post_login_init(self, server_id, admin_id=0):
         for module in self.modules:
-            module.close()
+            await module.close()
 
         self.server = None
         self.prefs = None
