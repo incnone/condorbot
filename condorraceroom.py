@@ -780,6 +780,6 @@ class RaceRoom(command.Module):
 
     async def record_match(self):
         self._cm.condordb.record_match(self.match)
-        await self._cm.condorsheet.record_match(self.match)
-        await self.write('Match results recorded.')      
+        await self._cm.post_match_results(self.match)
+        await self.write('Match results recorded.')
         await self.update_leaderboard()

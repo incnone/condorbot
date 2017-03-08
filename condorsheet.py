@@ -193,12 +193,14 @@ class CondorSheet(object):
         else:
             self._log_warning('Couldn\'t find worksheet for week <{}>.'.format(match.week))
 
-    async def record_match(self, match):
-        return await self._do_with_lock(self._record_match, match)
+    async def record_match(self, match, match_results=None):
+        return await self._do_with_lock(self._record_match, match, match_results)
 
-    async def _record_match(self, match):
-        match_results = self._db.get_score(match)
-        if not match_results:
+    async def _record_match(self, match, match_results):
+        if match_results is None:
+            match_results = self._db.get_score(match)
+        if match_results is None:
+            self._log_warning('Couldn\'t find results for match {0}.'.format(match.channel_name))
             return
         
         wks = self._get_wks(match.week)

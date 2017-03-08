@@ -652,28 +652,37 @@ class Suggest(command.CommandType):
             # Schedule the match
             match.schedule(utc_dt, racer)
 
+            # Automatically confirm
+            match.confirm(utc_dt, racer)
+
             # update the db
             self._cm.condordb.update_match(match)
 
             # output what we did
             await self._cm.update_match_channel(match)
             racers = [match.racer_1, match.racer_2]
-            for racer in racers:
-                member = self._cm.necrobot.find_member_with_id(racer.discord_id)
+            for match_racer in racers:
+                member = self._cm.necrobot.find_member_with_id(match_racer.discord_id)
                 if member:
-                    if racer.timezone:
-                        r_tz = pytz.timezone(racer.timezone)
+                    if match_racer.timezone:
+                        r_tz = pytz.timezone(match_racer.timezone)
                         r_dt = r_tz.normalize(utc_dt.astimezone(pytz.utc))
-                        await self._cm.necrobot.client.send_message(
-                            cmd.channel,
-                            '{0}: This match is suggested to be scheduled for {1}. Please confirm with '
-                            '`.confirm`.'.format(member.mention, condortimestr.get_time_str(r_dt)))
+                        if match_racer == racer:
+                            await self._cm.necrobot.client.send_message(
+                                cmd.channel,
+                                '{0}: You\'ve suggested the match be scheduled for {1}. Waiting for the other '
+                                'racer to `confirm.`'.format(member.mention, condortimestr.get_time_str(r_dt)))
+                        else:
+                            await self._cm.necrobot.client.send_message(
+                                cmd.channel,
+                                '{0}: This match is suggested to be scheduled for {1}. Please confirm with '
+                                '`.confirm`.'.format(member.mention, condortimestr.get_time_str(r_dt)))
                     else:
                         await self._cm.necrobot.client.send_message(
                             cmd.channel,
                             '{0}: A match time has been suggested; please confirm with `.confirm`. I also suggest '
                             'you register a timezone (use `.timezone`), so I can convert to your local time.'.format(
-                                member.mention))  
+                                member.mention))
 
 
 class Timezone(command.CommandType):
@@ -1636,6 +1645,17 @@ class CondorModule(command.Module):
         await self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
         # Send race soon event
         self.events.racesoon(match.racer_1.rtmp_name, match.racer_2.rtmp_name)
+
+    async def post_match_results(self, match):
+        score = self.condordb.get_score(match)
+        await self.necrobot.client.send_message(
+            self.necrobot.main_channel,
+            'Match completed: **{0}** [{1} - {2}] **{3}**.'.format(
+                match.racer_1.escaped_unique_name,
+                score[0],
+                score[1],
+                match.racer_2.escaped_unique_name))
+        await self.condorsheet.record_match(match, score)
 
     async def remind_all(self, text=None, condition=lambda m: True):
         match_list = self.condordb.get_all_matches()
