@@ -34,6 +34,9 @@ class VodRecorder(object):
                 rtmp_name, config.VODRECORD_HOST)
 
         def start_record(self, rtmp_name):
+            if not config.RECORDING_ACTIVATED:
+                return
+
             rtmp_name = rtmp_name.lower()
             if rtmp_name in self._recording_rtmps:
                 self.end_record(rtmp_name)
@@ -59,6 +62,9 @@ class VodRecorder(object):
                 curl.close()
 
         def end_record(self, rtmp_name):
+            if not config.RECORDING_ACTIVATED:
+                return
+
             rtmp_name = rtmp_name.lower()
             if rtmp_name not in self._recording_rtmps:
                 return
@@ -79,6 +85,9 @@ class VodRecorder(object):
                 curl.close()
 
         def end_all(self):
+            if not config.RECORDING_ACTIVATED:
+                return
+
             for rtmp_name in self._recording_rtmps:
                 curl = pycurl.Curl()
                 try:
