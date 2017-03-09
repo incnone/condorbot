@@ -674,7 +674,7 @@ class Suggest(command.CommandType):
             match.schedule(utc_dt, racer)
 
             # Automatically confirm
-            match.confirm(utc_dt, racer)
+            match.confirm(racer)
 
             # update the db
             self._cm.condordb.update_match(match)
