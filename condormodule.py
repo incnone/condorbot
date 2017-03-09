@@ -113,6 +113,27 @@ class UpdateGSheetSchedule(command.CommandType):
             raise e
 
 
+class UpdateCawmentary(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'updatecawmentary')
+        self.help_text = 'Update the database cawmentators from the GSheet. Warning: _very slow_.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel.is_private or channel == self._cm.admin_channel
+
+    async def _do_execute(self, cmd):
+        if self._cm.necrobot.is_admin(cmd.author):
+            await self._cm.necrobot.client.send_message(cmd.channel, 'Updating cawmentary...')
+            for match in self._cm.condordb.get_all_matches():
+                cawmentator = await self._cm.condorsheet.get_cawmentary(match)
+                if cawmentator is not None:
+                    racer = self._cm.condordb.get_from_twitch_name(cawmentator)
+                    if racer is not None:
+                        self._cm.condordb.add_cawmentary(match, racer.discord_id)
+            await self._cm.necrobot.client.send_message(cmd.channel, 'Done.')
+
+
 class Vod(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'vod')
@@ -1337,6 +1358,7 @@ class CondorModule(command.Module):
                               UpdateGSheetSchedule(self),
                               TimezoneAlert(self),
                               DropRacer(self),
+                              UpdateCawmentary(self)
                               ]
 
     async def initialize(self):
