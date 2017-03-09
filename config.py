@@ -38,7 +38,10 @@ def init(config_filename):
     global EVENTS_ACTIVATED
     global EVENTS_SERVER
     global EVENTS_PORT
-    
+
+    # vod recording
+    global VODRECORD_HOST
+
     defaults = {
         'bot_command_prefix': '.',
         'bot_version': '0.1.0',
@@ -62,7 +65,8 @@ def init(config_filename):
         'gsheet_timezone': 'US/Eastern',
         'events_activated': 'true',
         'events_server': 'necrommunity.ovh',
-        'events_port': '5000'
+        'events_port': '5000',
+        'vodrecord_host': ''
         }
 
     admin_roles = []
@@ -112,3 +116,5 @@ def init(config_filename):
     EVENTS_ACTIVATED = defaults['events_activated'] == 'true'
     EVENTS_SERVER = defaults['events_server']
     EVENTS_PORT = int(defaults['events_port'])
+
+    VODRECORD_HOST = defaults['vodrecord_host']

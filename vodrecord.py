@@ -1,3 +1,4 @@
+import config
 import pycurl
 
 
@@ -15,6 +16,16 @@ class VodRecorder(object):
         def __init__(self):
             self._recording_rtmps = []
 
+        @staticmethod
+        def _start_url(rtmp_name):
+            return 'https://{1}/control/record/start?app={0}&name=live&rec={0}'.format(
+                rtmp_name, config.VODRECORD_HOST)
+
+        @staticmethod
+        def _end_url(rtmp_name):
+            return 'https://{1}/control/record/stop?app={0}&name=live&rec={0}'.format(
+                rtmp_name, config.VODRECORD_HOST)
+
         def start_record(self, rtmp_name):
             rtmp_name = rtmp_name.lower()
             if rtmp_name in self._recording_rtmps:
@@ -23,7 +34,7 @@ class VodRecorder(object):
             curl = pycurl.Curl()
             curl.setopt(
                 curl.URL,
-                'https://vod.condorleague.tv/control/record/start?app={0}&name=live&rec={0}'.format(rtmp_name))
+                self._start_url(rtmp_name))
             curl.perform()
             curl.close()
             self._recording_rtmps.append(rtmp_name)
@@ -36,7 +47,7 @@ class VodRecorder(object):
             curl = pycurl.Curl()
             curl.setopt(
                 curl.URL,
-                'https://vod.condorleague.tv/control/record/stop?app={0}&name=live&rec={0}'.format(rtmp_name))
+                self._end_url(rtmp_name))
             curl.perform()
             curl.close()
             self._recording_rtmps = [r for r in self._recording_rtmps if r != rtmp_name]
@@ -47,7 +58,7 @@ class VodRecorder(object):
                     curl = pycurl.Curl()
                     curl.setopt(
                         curl.URL,
-                        'https://vod.condorleague.tv/control/record/stop?app={0}&name=live&rec={0}'.format(rtmp_name))
+                        self._end_url(rtmp_name))
                     curl.perform()
                     curl.close()
                 except pycurl.error:
