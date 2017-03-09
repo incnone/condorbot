@@ -11,6 +11,7 @@ import sys
 
 from necrobot import Necrobot
 from condormodule import CondorModule
+from vodrecord import VodRecorder
 
 
 class LoginData(object):
@@ -134,3 +135,4 @@ except Exception as e:
     loop.run_until_complete(client.close())
 finally:
     loop.close()
+    VodRecorder().end_all

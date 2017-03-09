@@ -11,6 +11,7 @@ import seedgen
 from race import Race
 from raceinfo import RaceInfo
 from events import Events
+from vodrecord import VodRecorder
 
 SUFFIXES = {1: 'st', 2: 'nd', 3: 'rd'}
 
@@ -783,3 +784,11 @@ class RaceRoom(command.Module):
         await self._cm.post_match_results(self.match)
         await self.write('Match results recorded.')
         await self.update_leaderboard()
+
+    def begin_vod_recording(self):
+        for racer in self.match.racers:
+            VodRecorder().start_record(racer.rtmp_name)
+
+    def end_vod_recording(self):
+        for racer in self.match.racers:
+            VodRecorder().end_record(racer.rtmp_name)
