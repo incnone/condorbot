@@ -4,6 +4,7 @@ import textwrap
 import config
 
 from adminmodule import AdminModule
+from vodrecord import VodRecorder
 
 
 class Necrobot(object):
@@ -22,9 +23,13 @@ class Necrobot(object):
 
     # Initializes object; call after client has been logged in to discord
     async def post_login_init(self, server_id, admin_id=0):
+        # Cleanup old data
         for module in self.modules:
             await module.close()
 
+        VodRecorder().end_all()
+
+        # Reset data members (to None)
         self.server = None
         self.prefs = None
         self.modules.clear()
@@ -35,7 +40,7 @@ class Necrobot(object):
 
         self.admin_id = admin_id if admin_id else None
        
-        # set up server
+        # Set up server
         try:
             int(server_id)
             id_is_int = True
@@ -54,6 +59,7 @@ class Necrobot(object):
             print('Error: Could not find the server.')
             exit(1)
 
+        # Init channels
         self._main_channel = self.find_channel(config.MAIN_CHANNEL_NAME)
         self._notifications_channel = self.find_channel(config.NOTIFICATIONS_CHANNEL_NAME)
         self._schedule_channel = self.find_channel(config.SCHEDULE_CHANNEL_NAME)
