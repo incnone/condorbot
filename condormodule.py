@@ -1610,7 +1610,7 @@ class CondorModule(command.Module):
             display_text += ': {0} \n'.format(condortimestr.timedelta_to_string(match.time - utcnow, punctuate=True))
             match_cawmentator = self.condordb.get_cawmentator(match)
             if match_cawmentator:
-                display_text += '    Cawmentary: <http://www.twitch.tv/{0}> \n'.format(match_cawmentator)
+                display_text += '    Cawmentary: <http://www.twitch.tv/{0}> \n'.format(match_cawmentator.twitch_name)
             else:
                 display_text += '    Cawmentary: None registered yet. \n'
         return display_text
@@ -1661,7 +1661,7 @@ class CondorModule(command.Module):
             alert_text += '({0}) '.format(match.league)
         alert_text += 'is scheduled to begin in {0} minutes.\n'.format(minutes_until_match)
         if cawmentator:
-            alert_text += 'Cawmentary: <http://www.twitch.tv/{0}> \n'.format(cawmentator)
+            alert_text += 'Cawmentary: <http://www.twitch.tv/{0}> \n'.format(cawmentator.twitch_name)
         alert_text += 'RTMP: <http://rtmp.condorleague.tv/#{0}/{1}> \n'.format(
             match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
         await self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
