@@ -244,6 +244,7 @@ class Race(object):
     # Warning: Do not call this -- use begin_countdown instead.
     async def _race_countdown(self):
         countdown_timer = config.COUNTDOWN_LENGTH
+        self.room.begin_vod_recording()
         await asyncio.sleep(1)   # Pause before countdown
         
         await self.room.write('The race will begin in {0} seconds.'.format(countdown_timer))
@@ -274,6 +275,7 @@ class Race(object):
     async def _finalize_race(self):
         self._status = RaceStatus['finalized'] if self.num_finished else RaceStatus['cancelled']
         await self.room.record_race()
+        self.room.end_vod_recording()
 
     # Attempt to cancel the race countdown -- transition race state from 'counting_down' to 'entry_open'
     # Returns False only if there IS a countdown, AND we failed to cancel it
