@@ -176,7 +176,6 @@ class Race(object):
             self._status = RaceStatus['counting_down']
             self._countdown_future = asyncio.ensure_future(self._race_countdown())
             asyncio.ensure_future(self.room.update_leaderboard())
-            self.room.on_race_countdown()
 
     # Pause the race timer.
     async def pause(self):
@@ -275,7 +274,6 @@ class Race(object):
     async def _finalize_race(self):
         self._status = RaceStatus['finalized'] if self.num_finished else RaceStatus['cancelled']
         await self.room.record_race()
-        self.room.on_race_finalize()
 
     # Attempt to cancel the race countdown -- transition race state from 'counting_down' to 'entry_open'
     # Returns False only if there IS a countdown, AND we failed to cancel it
