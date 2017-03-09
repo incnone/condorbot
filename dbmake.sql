@@ -24,7 +24,7 @@ CREATE TABLE match_data
 	flags int DEFAULT 0,
 	league int DEFAULT 0,
 	number_of_races int DEFAULT 0,
-	cawmentator_id int DEFAULT 0,
+	cawmentator_id bigint DEFAULT 0,
 	PRIMARY KEY (racer_1_id, racer_2_id, week_number),
     FOREIGN KEY (racer_1_id) REFERENCES user_data(racer_id),
     FOREIGN KEY (racer_2_id) REFERENCES user_data(racer_id)

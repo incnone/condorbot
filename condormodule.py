@@ -113,6 +113,27 @@ class UpdateGSheetSchedule(command.CommandType):
             raise e
 
 
+class UpdateCawmentary(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'updatecawmentary')
+        self.help_text = 'Update the database cawmentators from the GSheet. Warning: _very slow_.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel.is_private or channel == self._cm.admin_channel
+
+    async def _do_execute(self, cmd):
+        if self._cm.necrobot.is_admin(cmd.author):
+            await self._cm.necrobot.client.send_message(cmd.channel, 'Updating cawmentary...')
+            for match in self._cm.condordb.get_all_matches():
+                cawmentator = await self._cm.condorsheet.get_cawmentary(match)
+                if cawmentator is not None:
+                    racer = self._cm.condordb.get_from_twitch_name(cawmentator)
+                    if racer is not None:
+                        self._cm.condordb.add_cawmentary(match, racer.discord_id)
+            await self._cm.necrobot.client.send_message(cmd.channel, 'Done.')
+
+
 class Vod(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'vod')
@@ -653,7 +674,7 @@ class Suggest(command.CommandType):
             match.schedule(utc_dt, racer)
 
             # Automatically confirm
-            match.confirm(utc_dt, racer)
+            match.confirm(racer)
 
             # update the db
             self._cm.condordb.update_match(match)
@@ -1337,6 +1358,7 @@ class CondorModule(command.Module):
                               UpdateGSheetSchedule(self),
                               TimezoneAlert(self),
                               DropRacer(self),
+                              UpdateCawmentary(self)
                               ]
 
     async def initialize(self):
@@ -1586,9 +1608,9 @@ class CondorModule(command.Module):
             if match.league != CondorLeague.NONE:
                 display_text += ' ({0})'.format(match.league)
             display_text += ': {0} \n'.format(condortimestr.timedelta_to_string(match.time - utcnow, punctuate=True))
-            match_cawmentator = await self.condorsheet.get_cawmentary(match)
+            match_cawmentator = self.condordb.get_cawmentator(match)
             if match_cawmentator:
-                display_text += '    Cawmentary: <http://www.twitch.tv/{0}> \n'.format(match_cawmentator)
+                display_text += '    Cawmentary: <http://www.twitch.tv/{0}> \n'.format(match_cawmentator.twitch_name)
             else:
                 display_text += '    Cawmentary: None registered yet. \n'
         return display_text
@@ -1630,7 +1652,7 @@ class CondorModule(command.Module):
         await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
             
     async def post_match_alert(self, match):
-        cawmentator = await self.condorsheet.get_cawmentary(match)
+        cawmentator = self.condordb.get_cawmentator(match)
         minutes_until_match = int((match.time_until_match.total_seconds() + 30) // 60)
         alert_text = 'The match **{0}** - **{1}** '.format(
             match.racer_1.escaped_unique_name,
@@ -1639,7 +1661,7 @@ class CondorModule(command.Module):
             alert_text += '({0}) '.format(match.league)
         alert_text += 'is scheduled to begin in {0} minutes.\n'.format(minutes_until_match)
         if cawmentator:
-            alert_text += 'Cawmentary: <http://www.twitch.tv/{0}> \n'.format(cawmentator)
+            alert_text += 'Cawmentary: <http://www.twitch.tv/{0}> \n'.format(cawmentator.twitch_name)
         alert_text += 'RTMP: <http://rtmp.condorleague.tv/#{0}/{1}> \n'.format(
             match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
         await self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
