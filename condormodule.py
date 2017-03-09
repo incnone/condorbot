@@ -1586,7 +1586,7 @@ class CondorModule(command.Module):
             if match.league != CondorLeague.NONE:
                 display_text += ' ({0})'.format(match.league)
             display_text += ': {0} \n'.format(condortimestr.timedelta_to_string(match.time - utcnow, punctuate=True))
-            match_cawmentator = await self.condorsheet.get_cawmentary(match)
+            match_cawmentator = await self.condordb.get_cawmentator(match)
             if match_cawmentator:
                 display_text += '    Cawmentary: <http://www.twitch.tv/{0}> \n'.format(match_cawmentator)
             else:
@@ -1630,7 +1630,7 @@ class CondorModule(command.Module):
         await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
             
     async def post_match_alert(self, match):
-        cawmentator = await self.condorsheet.get_cawmentary(match)
+        cawmentator = await self.condordb.get_cawmentator(match)
         minutes_until_match = int((match.time_until_match.total_seconds() + 30) // 60)
         alert_text = 'The match **{0}** - **{1}** '.format(
             match.racer_1.escaped_unique_name,
