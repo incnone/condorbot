@@ -111,7 +111,7 @@ class CondorRacer(object):
 
 
 class CondorMatch(object):
-    OFFSET_DATETIME = datetime.datetime(year=2016, month=1, day=1, tzinfo=pytz.utc)
+    OFFSET_DATETIME = datetime.datetime(year=1970, month=1, day=1, tzinfo=pytz.utc)
     
     FLAG_SCHEDULED = int(1) << 0
     FLAG_SCHEDULED_BY_R1 = int(1) << 1
@@ -170,7 +170,7 @@ class CondorMatch(object):
     @property
     def timestamp(self):
         if self.time:
-            return (self.time - CondorMatch.OFFSET_DATETIME).total_seconds()
+            return (self.time - CondorMatch.OFFSET_DATETIME).total_seconds()*1000
         else:
             return 0
 
@@ -212,7 +212,7 @@ class CondorMatch(object):
                 'Tried to set a match\'s league from the value <>.'.format(lv))
 
     def set_from_timestamp(self, timestamp):
-        td = datetime.timedelta(seconds=timestamp)
+        td = datetime.timedelta(milliseconds=timestamp)
         self._time = CondorMatch.OFFSET_DATETIME + td
 
     def set_best_of(self, out_of_n):

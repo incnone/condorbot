@@ -9,10 +9,8 @@ Condorbot TODO
 
 # Bot features
 
-- ~~Send message in #season5 when a race completes with the score~~
-- ~~Make the person who suggests a time automatically confirm it~~
+- Add bot reminders for unscheduled matches later in week, or unconfirmed
 - Add `-language` to `.cawmentate` command, and allow users to set a default
-- Add `curl` events to race start/end to auto-record bots, like Mac asks
 
 # Database bugs
 
