@@ -170,7 +170,7 @@ class CondorMatch(object):
     @property
     def timestamp(self):
         if self.time:
-            return (self.time - CondorMatch.OFFSET_DATETIME).total_seconds()*1000
+            return (self.time - CondorMatch.OFFSET_DATETIME).total_seconds()
         else:
             return 0
 
@@ -212,7 +212,7 @@ class CondorMatch(object):
                 'Tried to set a match\'s league from the value <>.'.format(lv))
 
     def set_from_timestamp(self, timestamp):
-        td = datetime.timedelta(milliseconds=timestamp)
+        td = datetime.timedelta(seconds=timestamp)
         self._time = CondorMatch.OFFSET_DATETIME + td
 
     def set_best_of(self, out_of_n):
