@@ -666,7 +666,7 @@ class Suggest(command.CommandType):
             if time_until_friday.total_seconds() > 0:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
-                    '{0}: Error: Matches must be scheduled before next Friday at noon US/Eastern.'.format(
+                    '{0}: Error: Matches must be scheduled before next Thursday at midnight US/Eastern.'.format(
                         cmd.author.mention))
                 return
 
