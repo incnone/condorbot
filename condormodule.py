@@ -1311,7 +1311,7 @@ class DropRacer(command.CommandType):
 
             try:
                 week = int(cmd.args[2])
-                self._cm.condordb.drop_racer_from_week(racer, week)
+                await self._cm.drop_racer_from_week(racer, week)
                 await self._cm.client.send_message(
                     cmd.channel,
                     '{0}: Dropped racer `{1}` from week {2}.'.format(cmd.author.mention, rtmp_name, week))
@@ -1719,3 +1719,14 @@ class CondorModule(command.Module):
                 await self.necrobot.client.send_message(
                     channel,
                     '{0}: Please remember to schedule your races!'.format(mention_str))
+
+    async def drop_racer_from_week(self, racer, week):
+        for channel_id in self.condordb.get_all_channel_ids_with_racer(racer):
+            channel = self.necrobot.client.get_channel(channel_id)
+            if channel is not None:
+                await self.necrobot.client.delete_channel()
+            else:
+                self._log_warning('Couldn\'t find channel with id {0}'.format(channel_id))
+
+        self.condordb.drop_racer_from_week(racer, week)
+

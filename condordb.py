@@ -582,6 +582,26 @@ class CondorDB(object):
         finally:
             self._close()
 
+    def get_all_channel_ids_with_racer(self, racer):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+
+            params = (self._get_racer_id(racer),self._get_racer_id(racer),)
+            cursor.execute(
+                "SELECT channel_id "
+                "FROM channel_data "
+                "WHERE racer_1_id=%s OR racer_2_id=%s",
+                params)
+
+            ids = []
+            for row in cursor:
+                ids.append(int(row[0]))
+
+            return ids
+        finally:
+            self._close()
+
     def get_channel_id_from_match(self, match):
         try:
             self._connect()
