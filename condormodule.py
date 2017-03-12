@@ -1722,7 +1722,29 @@ class CondorModule(command.Module):
                 return
 
         await self.necrobot.client.send_message(self.necrobot.schedule_channel, schedule_text)
-            
+
+    async def send_cawmentator_alert(self, match):
+        cawmentator = self.condordb.get_cawmentator(match)
+        if cawmentator is None:
+            return
+
+        minutes_until_match = int((match.time_until_match.total_seconds() + 30) // 60)
+        alert_text = 'Reminder: you\'re scheduled to cawmentate **{0}** - **{1}** '.format(
+            match.racer_1.escaped_unique_name,
+            match.racer_2.escaped_unique_name)
+        if match.league != CondorLeague.NONE:
+            alert_text += '({0}) '.format(match.league)
+        alert_text += ', which is scheduled to begin in {0} minutes.\n'.format(minutes_until_match)
+        alert_text += 'RTMP: <http://rtmp.condorleague.tv/#{0}/{1}> \n'.format(
+            match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
+        racer_1_stats = self.condordb.get_racer_stats(match.racer_1)
+        racer_2_stats = self.condordb.get_racer_stats(match.racer_2)
+        if racer_1_stats:
+            alert_text += racer_1_stats.big_infobox + '\n'
+        if racer_2_stats:
+            alert_text += racer_2_stats.big_infobox + '\n'
+        await self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
+
     async def post_match_alert(self, match):
         cawmentator = self.condordb.get_cawmentator(match)
         minutes_until_match = int((match.time_until_match.total_seconds() + 30) // 60)
@@ -1737,6 +1759,7 @@ class CondorModule(command.Module):
         alert_text += 'RTMP: <http://rtmp.condorleague.tv/#{0}/{1}> \n'.format(
             match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
         await self.necrobot.client.send_message(self.necrobot.main_channel, alert_text)
+
         # Send race soon event
         self.events.racesoon(match.racer_1.rtmp_name, match.racer_2.rtmp_name)
 

@@ -400,6 +400,17 @@ class Reseed(command.CommandType):
                 self._room.race.reseed()
                 await self._room.write('New seed generated: {0}.'.format(self._room.race.race_info.seed))
 
+
+class ForceCawmentatorAlert(command.CommandType):
+    def __init__(self, race_room):
+        command.CommandType.__init__(self, 'forcecawmentatoralert')
+        self.help_text = 'Update the current match in the database and the gsheet.'
+        self._room = race_room
+
+    async def _do_execute(self, cmd):
+        if self._room.is_race_admin(cmd.author):
+            await self._room.send_cawmentator_alert()
+
                                 
 class RaceRoom(command.Module):
 
@@ -451,6 +462,7 @@ class RaceRoom(command.Module):
                               ForceNewRace(self),
                               ForceCancelRace(self),
                               ForceRecordMatch(self),
+                              ForceCawmentatorAlert(self),
                               Reseed(self)
                               ]
 
@@ -604,24 +616,19 @@ class RaceRoom(command.Module):
                     'CoNDOR Staff (`.staff`).')
                 await self.begin_new_race()
         else:
-            pm_warning = datetime.timedelta(minutes=30)
             first_warning = datetime.timedelta(minutes=15)
-            alert_staff_warning = datetime.timedelta(minutes=5)
-
-            if time_until_match > pm_warning:
-                await asyncio.sleep((time_until_match - pm_warning).total_seconds())
-                if not self.race:
-                    await self.alert_racers(send_pm=True)                
+            final_warning = datetime.timedelta(minutes=5)
 
             time_until_match = self.match.time_until_match            
             if time_until_match > first_warning:
                 await asyncio.sleep((time_until_match - first_warning).total_seconds())
                 if not self.race:
                     await self.alert_racers()
+                    await self._cm.send_cawmentator_alert(self.match)
 
             time_until_match = self.match.time_until_match
-            if time_until_match > alert_staff_warning:
-                await asyncio.sleep((time_until_match - alert_staff_warning).total_seconds())
+            if time_until_match > final_warning:
+                await asyncio.sleep((time_until_match - final_warning).total_seconds())
 
             # this is done at the alert_staff_warning, unless this function was called after the alert_staff_warning, 
             # in which case do it immediately
@@ -792,3 +799,6 @@ class RaceRoom(command.Module):
     def end_vod_recording(self):
         for racer in self.match.racers:
             VodRecorder().end_record(racer.rtmp_name)
+
+    async def send_cawmentator_alert(self):
+        await self._cm.send_cawmentator_alert(self.match)

@@ -138,4 +138,4 @@ except Exception as e:
     loop.run_until_complete(client.close())
 finally:
     loop.close()
-    VodRecorder().end_all
+    VodRecorder().end_all()
