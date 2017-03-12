@@ -587,7 +587,7 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            params = (self._get_racer_id(racer),self._get_racer_id(racer),)
+            params = (self._get_racer_id(racer), self._get_racer_id(racer),)
             cursor.execute(
                 "SELECT channel_id "
                 "FROM channel_data "

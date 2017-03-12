@@ -1726,7 +1726,7 @@ class CondorModule(command.Module):
             if channel is not None:
                 await self.necrobot.client.delete_channel()
             else:
-                self._log_warning('Couldn\'t find channel with id {0}'.format(channel_id))
+                self._log_warning('Couldn\'t find channel with id <{0}>.'.format(channel_id))
 
         self.condordb.drop_racer_from_week(racer, week)
 
