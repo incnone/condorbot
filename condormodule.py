@@ -1400,6 +1400,8 @@ class CondorModule(command.Module):
         self.events = Events()
         self._racerooms = []
         self._alerted_channels = []
+        self._channel_alert_futures = []
+        self._schedule_channel_updater_future = None
 
         self.command_types = [command.DefaultHelp(self),
                               Cawmentate(self),
@@ -1436,11 +1438,15 @@ class CondorModule(command.Module):
     async def initialize(self):
         await self.run_channel_alerts()
         await self.update_schedule_channel()
-        asyncio.ensure_future(self.schedule_channel_auto_updater())
+        self._schedule_channel_updater_future = asyncio.ensure_future(self.schedule_channel_auto_updater())
 
     async def close(self):
         for room in self._racerooms:
             await room.close()
+        self._racerooms = []
+        for alert_future in self._channel_alert_futures:
+            alert_future.cancel()
+        self._schedule_channel_updater_future.cancel()
 
     @property
     def infostr(self):
@@ -1478,9 +1484,8 @@ class CondorModule(command.Module):
                 if int(ch.id) == int(already_made_id):
                     return False
 
-            # self.condordb.delete_channel(already_made_id)
-            # already_made_id = self.condordb.find_match_channel_id(match)
-            already_made_id = None
+            self.condordb.delete_channel(already_made_id)
+            already_made_id = self.condordb.find_match_channel_id(match)
 
         deny_read = discord.PermissionOverwrite(read_messages=False)
         permit_read = discord.PermissionOverwrite(read_messages=True)
@@ -1508,7 +1513,7 @@ class CondorModule(command.Module):
         for role in self.necrobot.admin_roles:
             await self.client.edit_channel_permissions(channel, role, permit_read)
 
-        asyncio.ensure_future(self.channel_alert(channel_id))
+        self._channel_alert_futures.append(asyncio.ensure_future(self.channel_alert(channel_id)))
         self.condordb.register_channel(match, channel_id)
         await self.update_match_channel(match)
         await self.send_channel_start_text(channel, match)
@@ -1579,7 +1584,7 @@ class CondorModule(command.Module):
                 if delete_raceroom_id:
                     self._racerooms = [r for r in self._racerooms if not (int(r.channel.id) == delete_raceroom_id)]
 
-                asyncio.ensure_future(self.channel_alert(channel.id))
+                self._channel_alert_futures.append(asyncio.ensure_future(self.channel_alert(channel.id)))
                 await self.necrobot.client.edit_channel(channel, topic=match.topic_str)
 
     async def channel_alert(self, channel_id):
@@ -1597,7 +1602,7 @@ class CondorModule(command.Module):
 
     async def run_channel_alerts(self):
         for channel_id in self.condordb.get_all_race_channel_ids():
-            asyncio.ensure_future(self.channel_alert(channel_id))
+            self._channel_alert_futures.append(asyncio.ensure_future(self.channel_alert(channel_id)))
 
     async def send_channel_start_text(self, channel, match):
         await self.necrobot.client.send_message(
