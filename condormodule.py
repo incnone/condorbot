@@ -660,9 +660,9 @@ class Suggest(command.CommandType):
             # Check if the scheduled time is before friday at noon
             today_date = datetime.date.today()
             friday_date = today_date + datetime.timedelta(days=((4-today_date.weekday()) % 7))
-            friday_noon_eastern = pytz.timezone('US/Eastern').localize(
-                datetime.datetime.combine(friday_date, datetime.time(hour=12)))
-            time_until_friday = utc_dt - friday_noon_eastern
+            friday_midnight_eastern = pytz.timezone('US/Eastern').localize(
+                datetime.datetime.combine(friday_date, datetime.time(hour=0)))
+            time_until_friday = utc_dt - friday_midnight_eastern
             if time_until_friday.total_seconds() > 0:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
