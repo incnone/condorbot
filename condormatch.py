@@ -5,6 +5,7 @@ import re
 
 import condortimestr
 import config
+import racetime
 from enum import Enum
 
 
@@ -14,6 +15,48 @@ class CondorLeague(Enum):
     TITANIUM = 2
     OBSIDIAN = 3
     CRYSTAL = 4
+    PLAYOFF = 5
+
+    @staticmethod
+    def get_from_value(lv):
+        if lv == 0:
+            return CondorLeague.NONE
+        elif lv == 1:
+            return CondorLeague.BLOOD
+        elif lv == 2:
+            return CondorLeague.TITANIUM
+        elif lv == 3:
+            return CondorLeague.OBSIDIAN
+        elif lv == 4:
+            return CondorLeague.CRYSTAL
+        elif lv == 5:
+            return CondorLeague.PLAYOFF
+        else:
+            logging.getLogger('discord').warning(
+                'Tried to set a match\'s league from the value <>.'.format(lv))
+            return CondorLeague.NONE
+
+    @staticmethod
+    def get_from_str(st):
+        s = st.lower()
+        if s == 'blood':
+            return CondorLeague.BLOOD
+        elif s == 'titanium':
+            return CondorLeague.TITANIUM
+        elif s == 'obsidian':
+            return CondorLeague.OBSIDIAN
+        elif s == 'crystal':
+            return CondorLeague.CRYSTAL
+        elif s == 'playoff':
+            return CondorLeague.PLAYOFF
+        else:
+            logging.getLogger('discord').warning(
+                'Tried to set a match\'s league from the string <>.'.format(st))
+            return CondorLeague.NONE
+
+    @staticmethod
+    def get_letter(league):
+        return league.name[:1].capitalize()
 
     def __str__(self):
         if self.value == 0:
@@ -26,6 +69,8 @@ class CondorLeague(Enum):
             return 'Obsidian'
         elif self.value == 4:
             return 'Crystal'
+        elif self.value == 5:
+            return 'Playoff'
 
 
 class CondorRacer(object):
@@ -38,6 +83,7 @@ class CondorRacer(object):
         self.twitch_name = None
         self.rtmp_name = None
         self.timezone = None
+        self.additional_info = None
 
     def __eq__(self, other):
         return self.unique_name.lower() == other.unique_name.lower()
@@ -49,25 +95,34 @@ class CondorRacer(object):
         return s
 
     @property
-    def infobox(self):
+    def infoname(self):
+        if self.additional_info is not None:
+            return '{0} ({1})'.format(self.discord_name, self.additional_info)
+        else:
+            return self.discord_name
+
+    @property
+    def infotext(self):
         if self.twitch_name == self.rtmp_name:
-            return '```\n' \
-                   '{0}\n' \
-                   '  Twitch/RTMP: {1}\n' \
-                   '     Timezone: {2}```'.format(
-                    self.discord_name,
+            return '  Twitch/RTMP: {0}\n' \
+                   '     Timezone: {1}'.format(
                     self.rtmp_name,
                     self.timezone)
         else:
-            return '```\n' \
-                   '{0}\n' \
-                   '    Twitch: {1}\n' \
-                   '      RTMP: {2}\n' \
-                   '  Timezone: {3}\n```'.format(
-                    self.discord_name,
+            return '    Twitch: {0}\n' \
+                   '      RTMP: {1}\n' \
+                   '  Timezone: {2}\n'.format(
                     self.twitch_name,
                     self.rtmp_name,
                     self.timezone)
+
+    @property
+    def infobox(self):
+        return '```\n' \
+               '{0}\n' \
+               '{1}```'.format(
+                    self.infoname,
+                    self.infotext)
 
     @property
     def gsheet_regex(self):
@@ -108,6 +163,69 @@ class CondorRacer(object):
             return pytz.utc.normalize(local_dt.astimezone(pytz.utc))
         else:
             return pytz.utc.normalize(local_tz.localize(local_dt))
+
+
+class CondorRacerStats(object):
+    def __init__(self, racer):
+        self._racer = racer
+        self.wins = 0
+        self.losses = 0
+        self.mean_win_time = None  # Hundredths of a second
+        self.league_history = []  # A list of CondorLeagues
+
+    @property
+    def racer(self):
+        return self._racer
+
+    @property
+    def league_history_str(self):
+        to_return = ''
+        for league in self.league_history:
+            to_return += '{0}-'.format(CondorLeague.get_letter(league))
+        if to_return != '':
+            to_return = to_return[:-1]
+        return to_return
+
+    def _infotext(self, pad=''):
+        if self.mean_win_time is not None:
+            return '{4}    Record: {0}-{1}\n' \
+                   '{4}  Avg. Win: {2}\n' \
+                   '{4}   Leagues: {3}'.format(
+                        self.wins,
+                        self.losses,
+                        racetime.to_str(self.mean_win_time),
+                        self.league_history_str,
+                        pad)
+        else:
+            return '{3}    Record: {0}-{1}\n' \
+                   '{3}   Leagues: {2}'.format(
+                        self.wins,
+                        self.losses,
+                        self.league_history_str,
+                        pad)
+
+    @property
+    def infobox(self):
+        return '```\n' \
+               'Stats: {0}\n' \
+               '{1}```'.format(
+                   self.racer.unique_name,
+                   self._infotext())
+
+    @property
+    def big_infobox(self):
+        if self.racer.twitch_name == self.racer.rtmp_name:
+            pad = '   '
+        else:
+            pad = ''
+
+        return '```\n' \
+               '{0}\n' \
+               '{1}\n' \
+               '{2}\n```'.format(
+                    self.racer.infoname,
+                    self.racer.infotext,
+                    self._infotext(pad))
 
 
 class CondorMatch(object):
@@ -183,33 +301,10 @@ class CondorMatch(object):
         return self._number_of_races
 
     def set_league_from_str(self, st):
-        s = st.lower()
-        if s == 'blood':
-            self.league = CondorLeague.BLOOD
-        elif s == 'titanium':
-            self.league = CondorLeague.TITANIUM
-        elif s == 'obsidian':
-            self.league = CondorLeague.OBSIDIAN
-        elif s == 'crystal':
-            self.league = CondorLeague.CRYSTAL
-        else:
-            logging.getLogger('discord').warning(
-                'Tried to set a match\'s league from the string <>.'.format(st))
+        self.league = CondorLeague.get_from_str(st)
 
     def set_league_from_value(self, lv):
-        if lv == 0:
-            self.league = CondorLeague.NONE
-        elif lv == 1:
-            self.league = CondorLeague.BLOOD
-        elif lv == 2:
-            self.league = CondorLeague.TITANIUM
-        elif lv == 3:
-            self.league = CondorLeague.OBSIDIAN
-        elif lv == 4:
-            self.league = CondorLeague.CRYSTAL
-        else:
-            logging.getLogger('discord').warning(
-                'Tried to set a match\'s league from the value <>.'.format(lv))
+        self.league = CondorLeague.get_from_value(lv)
 
     def set_from_timestamp(self, timestamp):
         td = datetime.timedelta(seconds=timestamp)

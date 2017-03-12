@@ -3,8 +3,10 @@ import logging
 import mysql.connector
 
 import config
+from condormatch import CondorLeague
 from condormatch import CondorMatch
 from condormatch import CondorRacer
+from condormatch import CondorRacerStats
 
 
 class CondorDB(object):
@@ -16,14 +18,18 @@ class CondorDB(object):
         self._connect_stack = 0
 
     def _connect(self):
-        if self._connect_stack == 0:
-            self._db_conn = mysql.connector.connect(
-                user=config.MYSQL_DB_USER,
-                password=config.MYSQL_DB_PASSWD,
-                host=config.MYSQL_DB_HOST,
-                database=config.MYSQL_DB_NAME,
-                buffered=True)
-        self._connect_stack += 1
+        try:
+            if self._connect_stack == 0:
+                self._db_conn = mysql.connector.connect(
+                    user=config.MYSQL_DB_USER,
+                    password=config.MYSQL_DB_PASSWD,
+                    host=config.MYSQL_DB_HOST,
+                    database=config.MYSQL_DB_NAME,
+                    buffered=True)
+            self._connect_stack += 1
+        except mysql.connector.errors.InterfaceError:
+            self._connect_stack = 0
+            raise
 
     def _close(self):
         self._connect_stack -= 1
@@ -41,6 +47,7 @@ class CondorDB(object):
         racer.twitch_name = row[2]
         racer.timezone = row[3]
         racer.rtmp_name = row[4]
+        racer.additional_info = row[5]
         return racer
 
     def _get_racer_id(self, condor_racer):
@@ -89,7 +96,7 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
             params = (racer_id,)
             cursor.execute(
-                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name,user_info "
                 "FROM user_data "
                 "WHERE racer_id=%s",
                 params)
@@ -106,7 +113,7 @@ class CondorDB(object):
             cursor = self._db_conn.cursor(buffered=True)
             racer_list = []
             cursor.execute(
-                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name,user_info "
                 "FROM user_data")
             for row in cursor:
                 racer_list.append(self._get_racer_from_row(row))
@@ -120,7 +127,7 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
             params = (discord_id,)
             cursor.execute(
-                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name,user_info "
                 "FROM user_data "
                 "WHERE discord_id=%s",
                 params)
@@ -137,7 +144,7 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
             params = (discord_name.lower(),)
             cursor.execute(
-                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name,user_info "
                 "FROM user_data "
                 "WHERE LOWER(discord_name)=%s",
                 params)
@@ -154,7 +161,7 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
             params = (twitch_name.lower(),)
             cursor.execute(
-                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name,user_info "
                 "FROM user_data "
                 "WHERE LOWER(twitch_name)=%s",
                 params)
@@ -171,7 +178,7 @@ class CondorDB(object):
             cursor = self._db_conn.cursor()
             params = (rtmp_name.lower(),)
             cursor.execute(
-                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name "
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name,user_info "
                 "FROM user_data "
                 "WHERE LOWER(rtmp_name)=%s",
                 params)
@@ -757,6 +764,110 @@ class CondorDB(object):
                 "WHERE racer_1_id=%s AND racer_2_id=%s AND week_number=%s",
                 params)
             self._db_conn.commit()
+        finally:
+            self._close()
+
+    def _modify_racer_stats(self, racer_id, racer_number, racer_stats):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+            params = (racer_id,)
+
+            total_time_of_wins = 0
+            if racer_number == 1:
+                cursor.execute(
+                    "SELECT flags, winner, racer_1_time "
+                    "FROM race_data "
+                    "WHERE racer_1_id=%s",
+                    params)
+            else:
+                cursor.execute(
+                    "SELECT flags, winner, racer_2_time "
+                    "FROM race_data "
+                    "WHERE racer_2_id=%s",
+                    params)
+            for row in cursor:
+                if not int(row[0]) & CondorDB.RACE_CANCELLED_FLAG:
+                    if int(row[1]) == racer_number:
+                        racer_stats.wins += 1
+                        total_time_of_wins += int(row[2])
+                    elif int(row[1]) != 0:
+                        racer_stats.losses += 1
+            return total_time_of_wins
+        finally:
+            self._close()
+
+    def get_racer_stats(self, racer):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+
+            racer_id = self._get_racer_id(racer)
+            racer_stats = CondorRacerStats(racer)
+
+            # Get wins, losses, and mean time
+            total_time_of_wins = 0
+            total_time_of_wins += self._modify_racer_stats(racer_id, 1, racer_stats)
+            total_time_of_wins += self._modify_racer_stats(racer_id, 2, racer_stats)
+            if racer_stats.wins > 0:
+                racer_stats.mean_win_time = total_time_of_wins / racer_stats.wins
+
+            # Get league history
+            params = (racer_id, racer_id)
+            cursor.execute(
+                "SELECT week_number, league "
+                "FROM match_data "
+                "WHERE racer_1_id=%s OR racer_2_id=%s "
+                "ORDER BY week_number ASC",
+                params)
+
+            league_history_dict = {}
+            for row in cursor:
+                league_history_dict[int(row[0])] = CondorLeague.get_from_value(int(row[1]))
+
+            for league in league_history_dict.values():
+                racer_stats.league_history.append(league)
+
+            return racer_stats
+        finally:
+            self._close()
+
+    def set_user_info(self, racer, user_info):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+
+            if user_info == '':
+                params = (self._get_racer_id(racer),)
+                cursor.execute(
+                    "UPDATE user_data "
+                    "SET user_info=NULL "
+                    "WHERE racer_id=%s",
+                    params)
+            else:
+                params = (user_info, self._get_racer_id(racer),)
+                cursor.execute(
+                    "UPDATE user_data "
+                    "SET user_info=%s "
+                    "WHERE racer_id=%s",
+                    params)
+
+            self._db_conn.commit()
+        finally:
+            self._close()
+
+    def get_user_info(self, racer):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+            params = (self._get_racer_id(racer),)
+            cursor.execute(
+                "SELECT user_info "
+                "FROM user_data "
+                "WHERE racer_id=%s",
+                params)
+            for row in cursor:
+                return row[0]
         finally:
             self._close()
 

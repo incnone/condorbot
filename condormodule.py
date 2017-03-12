@@ -585,7 +585,8 @@ class Suggest(command.CommandType):
                     'If the problem persists, contact CoNDOR Staff.'.format(cmd.author.mention))
                 return                 
 
-            if not match.racer_1 or not match.racer_2:
+            if not match.racer_1 or not match.racer_2 \
+                    or not match.racer_1.discord_id or not match.racer_2.discord_id:
                 await self._cm.necrobot.client.send_messate(
                     cmd.channel,
                     'Error: At least one of the racers in this match is not registered, and needs to call '
@@ -857,6 +858,75 @@ class Unconfirm(command.CommandType):
                 '{0} has unconfirmed the current suggested time.'.format(cmd.author))
 
         await self._cm.update_match_channel(match)
+
+
+class Stats(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'stats')
+        self.help_text = 'Display racer stats. Usage is `.stats <rtmp_name>`. If no racer is given, will display ' \
+                         'stats for the command caller.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.necrobot.main_channel or channel.is_private
+
+    async def _do_execute(self, cmd):
+        if len(cmd.args) == 0:
+            racer = self._cm.condordb.get_from_discord_id(cmd.author.id)
+            if racer is None:
+                await self._cm.necrobot.client.send_message(
+                    '{0}: Error: Couldn\'t find you in the database. Please register with `.register`.'.format(
+                        cmd.author.mention))
+                return
+        elif len(cmd.args) == 1:
+            racer = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
+            if racer is None:
+                await self._cm.necrobot.client.send_message(
+                    '{0}: Error: Couldn\'t find RTMP name `{1}` in the database.'.format(
+                        cmd.author.mention, cmd.args[0]))
+                return
+        else:
+            await self._cm.necrobot.client.send_message(
+                '{0}: Error: Too many arguments for `.stats`.'.format(
+                    cmd.author.mention))
+            return
+
+        racer_stats = self._cm.condordb.get_racer_stats(racer)
+        await self._cm.necrobot.client.send_message(cmd.channel, racer_stats.big_infobox)
+
+
+class SetInfo(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'setinfo')
+        self.help_text = 'Add additional information to be displayed on `.userinfo`. Usage is `.setinfo <text>`.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.necrobot.main_channel or channel.is_private
+
+    async def _do_execute(self, cmd):
+        MAX_INFO_LEN = 255
+        cut_length = len(cmd.command) + len(config.BOT_COMMAND_PREFIX) + 1
+        info = cmd.message.content[cut_length:]
+
+        if len(info) > MAX_INFO_LEN:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                '{0}: Error: `.setinfo` is limited to {1} characters.'.format(cmd.author.mention, MAX_INFO_LEN))
+            return
+
+        racer = self._cm.condordb.get_from_discord_id(cmd.author.id)
+        if racer is None:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                '{0}: Error: couldn\'t find you in the database. Please register with `.register`.'.format(
+                    cmd.author.mention))
+            return
+
+        self._cm.condordb.set_user_info(racer, info)
+        await self._cm.necrobot.client.send_message(
+            cmd.channel,
+            '{0}: Updated your user info.'.format(cmd.author.mention))
 
 
 class UserInfo(command.CommandType):
@@ -1340,7 +1410,9 @@ class CondorModule(command.Module):
                               NextRace(self),
                               Register(self),
                               RTMP(self),
+                              SetInfo(self),
                               Staff(self),
+                              Stats(self),
                               Stream(self),
                               Suggest(self),
                               Timezone(self),
@@ -1533,7 +1605,7 @@ class CondorModule(command.Module):
             '\n \N{BULLET} To suggest a time, enter a command like `.suggest February 20 10:00p`. Give the time in '
             'your own local timezone (which you\'ve registered using `.timezone`).\n'
             '\N{BULLET} Confirm a suggested time with `.confirm`. You may remove a confirmation with `.unconfirm`.\n'
-            '\N{BULLET} To reschedule an time both racers have confirmed, both racers must call `.unconfirm`.\n'
+            '\N{BULLET} To reschedule a time both racers have confirmed, both racers must call `.unconfirm`.\n'
             '\N{BULLET} You may alert CoNDOR staff at any time by calling `.staff`.')
 
         if match.racer_1 and match.racer_2 and match.racer_1.timezone and match.racer_2.timezone:

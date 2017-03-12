@@ -38,6 +38,9 @@ class StampedOutput(object):
         # else:
         #     self._logger.info(s)
 
+    def flush(self):
+        self._out_str.flush()
+
     def write(self, s):
         if s == '\n':
             self._out_str.write(s)
