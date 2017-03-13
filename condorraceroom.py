@@ -455,14 +455,13 @@ class RaceRoom(command.Module):
                               Contest(self),
                               Pause(self),
                               Unpause(self),
-                              # ForceCancel(self),
                               ForceChangeWinner(self),
                               ForceForfeit(self),
                               ForceRecordRace(self),
                               ForceNewRace(self),
                               ForceCancelRace(self),
                               ForceRecordMatch(self),
-                              ForceCawmentatorAlert(self),
+                              # ForceCawmentatorAlert(self),  # For testing
                               Reseed(self)
                               ]
 

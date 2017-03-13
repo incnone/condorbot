@@ -47,7 +47,7 @@ class CondorLeague(Enum):
             return CondorLeague.OBSIDIAN
         elif s == 'crystal':
             return CondorLeague.CRYSTAL
-        elif s == 'playoff':
+        elif s == 'playoffs':
             return CondorLeague.PLAYOFF
         else:
             logging.getLogger('discord').warning(
@@ -70,7 +70,7 @@ class CondorLeague(Enum):
         elif self.value == 4:
             return 'Crystal'
         elif self.value == 5:
-            return 'Playoff'
+            return 'Playoffs'
 
 
 class CondorRacer(object):
@@ -111,7 +111,7 @@ class CondorRacer(object):
         else:
             return '    Twitch: {0}\n' \
                    '      RTMP: {1}\n' \
-                   '  Timezone: {2}\n'.format(
+                   '  Timezone: {2}'.format(
                     self.twitch_name,
                     self.rtmp_name,
                     self.timezone)
