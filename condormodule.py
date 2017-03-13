@@ -915,6 +915,12 @@ class SetInfo(command.CommandType):
                 '{0}: Error: `.setinfo` is limited to {1} characters.'.format(cmd.author.mention, MAX_INFO_LEN))
             return
 
+        if '\n' in info:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                '{0}: Error: `.setinfo` cannot contain a newline.'.format(cmd.author.mention))
+            return
+
         racer = self._cm.condordb.get_from_discord_id(cmd.author.id)
         if racer is None:
             await self._cm.necrobot.client.send_message(
