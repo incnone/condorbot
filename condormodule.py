@@ -875,6 +875,7 @@ class Stats(command.CommandType):
             racer = self._cm.condordb.get_from_discord_id(cmd.author.id)
             if racer is None:
                 await self._cm.necrobot.client.send_message(
+                    cmd.channel,
                     '{0}: Error: Couldn\'t find you in the database. Please register with `.register`.'.format(
                         cmd.author.mention))
                 return
@@ -882,11 +883,13 @@ class Stats(command.CommandType):
             racer = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
             if racer is None:
                 await self._cm.necrobot.client.send_message(
+                    cmd.channel,
                     '{0}: Error: Couldn\'t find RTMP name `{1}` in the database.'.format(
                         cmd.author.mention, cmd.args[0]))
                 return
         else:
             await self._cm.necrobot.client.send_message(
+                cmd.channel,
                 '{0}: Error: Too many arguments for `.stats`.'.format(
                     cmd.author.mention))
             return

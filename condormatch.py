@@ -56,7 +56,10 @@ class CondorLeague(Enum):
 
     @staticmethod
     def get_letter(league):
-        return league.name[:1].capitalize()
+        if league == CondorLeague.NONE:
+            return '.'
+        else:
+            return league.name[:1].capitalize()
 
     def __str__(self):
         if self.value == 0:
@@ -171,6 +174,7 @@ class CondorRacerStats(object):
         self.wins = 0
         self.losses = 0
         self.mean_win_time = None  # Hundredths of a second
+        self.fastest_win_time = None
         self.league_history = []  # A list of CondorLeagues
 
     @property
@@ -187,22 +191,23 @@ class CondorRacerStats(object):
         return to_return
 
     def _infotext(self, pad=''):
+        to_return = '{3}    Record: {0}-{1}\n' \
+                    '{3}   Leagues: {2}'.format(
+                        self.wins,
+                        self.losses,
+                        self.league_history_str,
+                        pad)
         if self.mean_win_time is not None:
-            return '{4}    Record: {0}-{1}\n' \
-                   '{4}  Avg. Win: {2}\n' \
-                   '{4}   Leagues: {3}'.format(
-                        self.wins,
-                        self.losses,
-                        racetime.to_str(self.mean_win_time),
-                        self.league_history_str,
-                        pad)
-        else:
-            return '{3}    Record: {0}-{1}\n' \
-                   '{3}   Leagues: {2}'.format(
-                        self.wins,
-                        self.losses,
-                        self.league_history_str,
-                        pad)
+            to_return += '\n' \
+                         '{1}  Avg. Win: {0}'.format(
+                                racetime.to_str(self.mean_win_time),
+                                pad)
+        if self.fastest_win_time is not None:
+            to_return += '\n' \
+                         '{1}  Best Win: {0}'.format(
+                                racetime.to_str(self.fastest_win_time),
+                                pad)
+        return to_return
 
     @property
     def infobox(self):
