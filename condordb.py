@@ -774,6 +774,7 @@ class CondorDB(object):
             params = (racer_id,)
 
             total_time_of_wins = 0
+            number_of_timed_wins = 0
             if racer_number == 1:
                 cursor.execute(
                     "SELECT flags, winner, racer_1_time "
@@ -790,10 +791,12 @@ class CondorDB(object):
                 if not int(row[0]) & CondorDB.RACE_CANCELLED_FLAG:
                     if int(row[1]) == racer_number:
                         racer_stats.wins += 1
-                        total_time_of_wins += int(row[2])
+                        if int(row[2]) > 0:
+                            total_time_of_wins += int(row[2])
+                            number_of_timed_wins += 1
                     elif int(row[1]) != 0:
                         racer_stats.losses += 1
-            return total_time_of_wins
+            return total_time_of_wins, number_of_timed_wins
         finally:
             self._close()
 
@@ -806,11 +809,12 @@ class CondorDB(object):
             racer_stats = CondorRacerStats(racer)
 
             # Get wins, losses, and mean time
-            total_time_of_wins = 0
-            total_time_of_wins += self._modify_racer_stats(racer_id, 1, racer_stats)
-            total_time_of_wins += self._modify_racer_stats(racer_id, 2, racer_stats)
-            if racer_stats.wins > 0:
-                racer_stats.mean_win_time = total_time_of_wins / racer_stats.wins
+            racer_1_winstats = self._modify_racer_stats(racer_id, 1, racer_stats)
+            racer_2_winstats = self._modify_racer_stats(racer_id, 2, racer_stats)
+            racer_wins = racer_1_winstats[1] + racer_2_winstats[1]
+            total_time = racer_1_winstats[0] + racer_2_winstats[0]
+            if racer_wins > 0:
+                racer_stats.mean_win_time = total_time / racer_wins
 
             # Get league history
             params = (racer_id, racer_id)
