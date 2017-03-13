@@ -1853,7 +1853,7 @@ class CondorModule(command.Module):
 
     async def drop_racer_from_week(self, racer, week):
         for channel_id in self.condordb.get_all_channel_ids_with_racer(racer):
-            channel = self.necrobot.client.get_channel(channel_id)
+            channel = self.necrobot.find_channel_with_id(channel_id)
             if channel is not None:
                 await self.necrobot.client.delete_channel()
             else:

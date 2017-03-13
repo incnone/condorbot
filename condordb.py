@@ -852,7 +852,10 @@ class CondorDB(object):
             if racer_1_winstats[2] > 0:
                 racer_stats.fastest_win_time = racer_1_winstats[2]
             if racer_2_winstats[2] > 0:
-                racer_stats.fastest_win_time = min(racer_stats.fastest_win_time, racer_2_winstats[2])
+                if racer_stats.fastest_win_time is None:
+                    racer_stats.fastest_win_time = racer_2_winstats[2]
+                else:
+                    racer_stats.fastest_win_time = min(racer_stats.fastest_win_time, racer_2_winstats[2])
 
             # Get league history
             params = (racer_id, racer_id)
