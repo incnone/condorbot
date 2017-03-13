@@ -803,6 +803,37 @@ class CondorDB(object):
         finally:
             self._close()
 
+    def get_fastest_clears(self, number):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+
+            fast_clears = []
+            cursor.execute(
+                "SELECT racer_1_time, racer_1_id, racer_2_id, week_number "
+                "FROM race_data "
+                "WHERE winner=1 AND racer_1_time != -1 ")
+            for row in cursor:
+                winner = self._get_racer_from_id(int(row[1]))
+                loser = self._get_racer_from_id(int(row[2]))
+                if winner is not None and loser is not None:
+                    fast_clears.append([int(row[0]), winner.unique_name, loser.unique_name, int(row[3])])
+
+            cursor.execute(
+                "SELECT racer_2_time, racer_2_id, racer_1_id, week_number "
+                "FROM race_data "
+                "WHERE winner=2 AND racer_2_time != -1 ")
+            for row in cursor:
+                winner = self._get_racer_from_id(int(row[1]))
+                loser = self._get_racer_from_id(int(row[2]))
+                if winner is not None and loser is not None:
+                    fast_clears.append([int(row[0]), winner.unique_name, loser.unique_name, int(row[3])])
+
+            fast_clears = sorted(fast_clears, key=lambda x: x[0])
+            return fast_clears[:number]
+        finally:
+            self._close()
+
     def get_racer_stats(self, racer):
         try:
             self._connect()

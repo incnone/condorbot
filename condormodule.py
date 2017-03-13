@@ -11,6 +11,7 @@ import clparse
 import command
 import condortimestr
 import config
+import racetime
 
 from condordb import CondorDB
 from condormatch import CondorRacer
@@ -860,6 +861,28 @@ class Unconfirm(command.CommandType):
         await self._cm.update_match_channel(match)
 
 
+class Fastest(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'fastest')
+        self.help_text = 'Get a list of the fastest clears.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return channel == self._cm.necrobot.main_channel or channel.is_private
+
+    async def _do_execute(self, cmd):
+        fastest_list = self._cm.condordb.get_fastest_clears(15)
+        list_text = '```Fastest wins:'
+        for clear in fastest_list:
+            list_text += '\n{0:>9} - {1} (vs {2}, week {3})'.format(
+                racetime.to_str(clear[0]),
+                clear[1],
+                clear[2],
+                clear[3])
+        list_text += '```'
+        await self._cm.necrobot.client.send_message(cmd.channel, list_text)
+
+
 class Stats(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'stats')
@@ -1417,6 +1440,7 @@ class CondorModule(command.Module):
                               Uncawmentate(self),
                               Confirm(self),
                               CloseWeek(self),
+                              Fastest(self),
                               MakeWeek(self),
                               NextRace(self),
                               Register(self),
