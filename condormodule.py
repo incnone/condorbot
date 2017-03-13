@@ -892,7 +892,7 @@ class Stats(command.CommandType):
             return
 
         racer_stats = self._cm.condordb.get_racer_stats(racer)
-        await self._cm.necrobot.client.send_message(cmd.channel, racer_stats.big_infobox)
+        await self._cm.necrobot.client.send_message(cmd.channel, racer_stats.infobox)
 
 
 class SetInfo(command.CommandType):
