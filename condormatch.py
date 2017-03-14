@@ -465,5 +465,12 @@ class CondorMatch(object):
                 self.flags &= CondorMatch.notflag(CondorMatch.FLAG_CONFIRMED_BY_R2)
                 
         if self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R1 and self.flags & CondorMatch.FLAG_UNCONFIRMED_BY_R2:
-            self.flags = 0
+            self.flags &= CondorMatch.FLAG_BEST_OF
             self._time = None
+
+    def force_unconfirm(self):
+        if self.played:
+            return
+
+        self.flags &= CondorMatch.FLAG_BEST_OF
+        self._time = None

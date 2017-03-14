@@ -800,6 +800,43 @@ class Uncawmentate(command.CommandType):
                     cmd.author.mention, racer_1.escaped_unique_name, racer_2.escaped_unique_name))
 
 
+class Postpone(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'postpone')
+        self.help_text = 'Postpones the match. An admin can resume with `.forcebeginmatch`.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    async def _do_execute(self, cmd):
+        if self._cm.necrobot.is_admin(cmd.author):
+            match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
+            if not match:
+                await self._cm.necrobot.client.send_message(
+                    cmd.channel,
+                    'Error: This match wasn\'t found in the database.')
+                return
+
+            if not match.confirmed:
+                await self._cm.necrobot.client.send_message(
+                    cmd.channel,
+                    'Error: This match hasn\'t been scheduled.')
+                return
+
+            match.force_unconfirm()
+            self._cm.condordb.update_match(match)
+
+            await self._cm.condorsheet.unschedule_match(match)
+            await self._cm.delete_race_room(match)
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                'The match has been postponed. An admin can resume with `.forcebeginmatch`, or the racers can '
+                '`.suggest` a new time as usual.')
+
+            await self._cm.update_match_channel(match)
+
+
 class Unconfirm(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'unconfirm')
@@ -1443,6 +1480,7 @@ class CondorModule(command.Module):
                               Fastest(self),
                               MakeWeek(self),
                               NextRace(self),
+                              Postpone(self),
                               Register(self),
                               RTMP(self),
                               SetInfo(self),
