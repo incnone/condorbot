@@ -246,7 +246,7 @@ class Race(object):
         countdown_timer = config.COUNTDOWN_LENGTH
         self.room.begin_vod_recording()
         await asyncio.sleep(1)   # Pause before countdown
-        
+
         await self.room.write('The race will begin in {0} seconds.'.format(countdown_timer))
         while countdown_timer > 0:
             if countdown_timer <= config.INCREMENTAL_COUNTDOWN_START:

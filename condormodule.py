@@ -385,7 +385,7 @@ class NextRace(command.CommandType):
 
     async def _do_execute(self, cmd):
         utcnow = pytz.utc.localize(datetime.datetime.utcnow())
-        matches = self._cm.condordb.get_upcoming_matches(utcnow)
+        matches = self._cm.get_upcoming_and_current_matches(utcnow)
         if not matches:
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
@@ -1747,9 +1747,28 @@ class CondorModule(command.Module):
         schedule_text += '```'
         return schedule_text
 
+    def get_upcoming_and_current_matches(self, utcnow):
+        upcoming_matches = self.condordb.get_upcoming_matches(utcnow)
+        to_remove = []
+        for room in self._racerooms:
+            if room.before_races:
+                continue
+
+            already_have_match = False
+            for match in upcoming_matches:
+                if room.match == match:
+                    already_have_match = True
+            if not already_have_match:
+                upcoming_matches.append(room.match)
+            elif room.played_all_races:
+                to_remove.append(room.match)
+
+        upcoming_matches = [m for m in upcoming_matches if m not in to_remove]
+        return sorted(upcoming_matches, key=lambda m: m.time)
+
     async def update_schedule_channel(self):
         utcnow = pytz.utc.localize(datetime.datetime.utcnow())
-        upcoming_matches = self.condordb.get_upcoming_matches(utcnow)
+        upcoming_matches = self.get_upcoming_and_current_matches(utcnow)
         upcoming_matches = upcoming_matches[:20]
         schedule_text = self.get_matches_infobox(upcoming_matches)
 
@@ -1855,7 +1874,7 @@ class CondorModule(command.Module):
         for channel_id in self.condordb.get_all_channel_ids_with_racer(racer):
             channel = self.necrobot.find_channel_with_id(channel_id)
             if channel is not None:
-                await self.necrobot.client.delete_channel()
+                await self.necrobot.client.delete_channel(channel)
             else:
                 self._log_warning('Couldn\'t find channel with id <{0}>.'.format(channel_id))
 

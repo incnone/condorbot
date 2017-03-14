@@ -261,6 +261,11 @@ class CondorMatch(object):
         self.flags = 0
         self.league = CondorLeague.NONE
 
+    def __eq__(self, other):
+        return self._racer_1 == other.racer_1 \
+                and self._racer_2 == other.racer_2 \
+                and self._week == other.week
+
     @property
     def channel_name(self):
         name_1 = self.racer_1.unique_name.lower()
