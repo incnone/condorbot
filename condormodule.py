@@ -395,7 +395,8 @@ class NextRace(command.CommandType):
         next_match = matches[0]
         upcoming_matches = []
         for match in matches:
-            if match.time - next_match.time < datetime.timedelta(hours=1, minutes=5):
+            if match.time - next_match.time < datetime.timedelta(hours=1, minutes=5) \
+                    or match.time - utcnow < datetime.timedelta(hours=1, minutes=5):
                 upcoming_matches.append(match)
 
         infobox = await self._cm.get_nextrace_displaytext(upcoming_matches)
