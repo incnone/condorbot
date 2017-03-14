@@ -1758,9 +1758,12 @@ class CondorModule(command.Module):
             for match in upcoming_matches:
                 if room.match == match:
                     already_have_match = True
-            if not already_have_match:
+
+            played_all = room.played_all_races
+
+            if not already_have_match and not played_all:
                 upcoming_matches.append(room.match)
-            elif room.played_all_races:
+            elif already_have_match and played_all:
                 to_remove.append(room.match)
 
         upcoming_matches = [m for m in upcoming_matches if m not in to_remove]
@@ -1879,4 +1882,3 @@ class CondorModule(command.Module):
                 self._log_warning('Couldn\'t find channel with id <{0}>.'.format(channel_id))
 
         self.condordb.drop_racer_from_week(racer, week)
-
