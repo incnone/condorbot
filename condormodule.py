@@ -162,6 +162,10 @@ class Vod(command.CommandType):
                     'Error: Couldn\'t find a match between {0} and {1}.'.format(cmd.args[0], cmd.args[1]))
                 return
 
+            # send typing prompt, since accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
+            # access gsheet
             url_link = cmd.args[2]
             await self._cm.condorsheet.add_vod_link(match, url_link)
             await self._cm.necrobot.client.send_message(
@@ -188,6 +192,9 @@ class Cawmentate(command.CommandType):
         if len(cmd.args) != 2:
             print('Error in cawmentate: wrong command arg length.')
         else:
+            # send typing prompt before accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
             # find the match
             racer_1 = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
             racer_2 = self._cm.condordb.get_from_rtmp_name(cmd.args[1])
@@ -233,6 +240,9 @@ class Confirm(command.CommandType):
         return self._cm.condordb.is_registered_channel(channel.id)
 
     async def _do_execute(self, cmd):
+        # send typing prompt before accessing gsheet
+        await self._cm.necrobot.client.send_typing(cmd.channel)
+
         match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
         if not match:
             await self._cm.necrobot.client.send_message(
@@ -759,6 +769,9 @@ class Uncawmentate(command.CommandType):
                 '{0}: Wrong arg length for `.uncawmentate` (please specify the RTMP names '
                 'of the racers in the match).'.format(cmd.author))
         else:
+            # send typing prompt before accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
             # find the match
             racer_1 = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
             racer_2 = self._cm.condordb.get_from_rtmp_name(cmd.args[1])
@@ -812,6 +825,9 @@ class Postpone(command.CommandType):
 
     async def _do_execute(self, cmd):
         if self._cm.necrobot.is_admin(cmd.author):
+            # send typing prompt before accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
             match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
             if not match:
                 await self._cm.necrobot.client.send_message(
@@ -850,6 +866,9 @@ class Unconfirm(command.CommandType):
         return self._cm.condordb.is_registered_channel(channel.id)
 
     async def _do_execute(self, cmd):
+        # send typing prompt before accessing gsheet
+        await self._cm.necrobot.client.send_typing(cmd.channel)
+
         match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
         if not match:
             await self._cm.necrobot.client.send_message(
@@ -1113,6 +1132,9 @@ class ForceConfirm(command.CommandType):
 
     async def _do_execute(self, cmd):
         if self._cm.necrobot.is_admin(cmd.author):
+            # send typing prompt before accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
             match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
             if not match:
                 await self._cm.necrobot.client.send_message(
@@ -1269,6 +1291,9 @@ class ForceUpdate(command.CommandType):
 
     async def _do_execute(self, cmd):
         if self._cm.necrobot.is_admin(cmd.author):
+            # send typing prompt before accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
             match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
             if not match:
                 await self._cm.necrobot.client.send_message(
@@ -1305,6 +1330,9 @@ class ForceUnschedule(command.CommandType):
 
     async def _do_execute(self, cmd):
         if self._cm.necrobot.is_admin(cmd.author):
+            # send typing prompt before accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
             match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
             if not match:
                 await self._cm.necrobot.client.send_message(
