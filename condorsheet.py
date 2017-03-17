@@ -255,19 +255,19 @@ class CondorSheet(object):
                                                      match.racer_1.unique_name, match.racer_2.unique_name))
                 self._log_warning(e)
                 raise
-            
+
             self._set_score(standings, racer_1_cells, racer_2_cells, match_results[0])
             self._set_score(standings, racer_2_cells, racer_1_cells, match_results[1])
         else:
-            self._log_warning('Couldn\'t find worksheet <standings>.')
+            self._log_warning('Couldn\'t find worksheet <Standings>.')
 
     @staticmethod
     def _set_score(standings, racer_1_cells, racer_2_cells, score):
         for cell_1 in racer_1_cells:
-            if cell_1.col == 2:
+            if cell_1.col == 3:
                 for cell_2 in racer_2_cells:
                     if cell_2.row == cell_1.row:
-                        standings.update_cell(cell_1.row, cell_2.col - 7, score)
+                        standings.update_cell(cell_1.row, cell_2.col - 15, score)
                         return
 
     async def get_cawmentary(self, match):

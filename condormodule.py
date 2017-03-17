@@ -1761,7 +1761,8 @@ class CondorModule(command.Module):
             if match_cawmentator:
                 display_text += '    Cawmentary: <http://www.twitch.tv/{0}> \n'.format(match_cawmentator.twitch_name)
             else:
-                display_text += '    Cawmentary: None registered yet. \n'
+                display_text += '    RTMP: <http://rtmp.condorleague.tv/#{0}/{1}> \n'.format(
+                    match.racer_1.rtmp_name.lower(), match.racer_2.rtmp_name.lower())
         return display_text
 
     @staticmethod
