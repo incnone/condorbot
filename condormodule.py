@@ -144,10 +144,14 @@ class Vod(command.CommandType):
         self._cm = condor_module
 
     def recognized_channel(self, channel):
-        return channel == self._cm.necrobot.main_channel
+        return channel == self._cm.necrobot.main_channel or channel.is_private
 
     async def _do_execute(self, cmd):
-        if len(cmd.args) != 3:
+        if not cmd.channel.is_private:
+            await self._cm.necrobot.client.send_message(
+                cmd.channel,
+                '{0}: Error: Due to a recent change, `.vod` must now be called via PM.'.format(cmd.author.mention))
+        elif len(cmd.args) != 3:
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
                 'Error: Wrong number of arguments for `.vod`.')
