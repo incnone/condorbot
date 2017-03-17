@@ -156,6 +156,9 @@ class Vod(command.CommandType):
                 cmd.channel,
                 'Error: Wrong number of arguments for `.vod`.')
         else:
+            # send typing prompt, since accessing gsheet
+            await self._cm.necrobot.client.send_typing(cmd.channel)
+
             # find the match
             racer_1 = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
             racer_2 = self._cm.condordb.get_from_rtmp_name(cmd.args[1])
@@ -165,9 +168,6 @@ class Vod(command.CommandType):
                     cmd.channel,
                     'Error: Couldn\'t find a match between {0} and {1}.'.format(cmd.args[0], cmd.args[1]))
                 return
-
-            # send typing prompt, since accessing gsheet
-            await self._cm.necrobot.client.send_typing(cmd.channel)
 
             # access gsheet
             url_link = cmd.args[2]
