@@ -10,7 +10,6 @@ import seedgen
 import sys
 
 from necrobot import Necrobot
-from condormodule import CondorModule
 from vodrecord import VodRecorder
 
 
@@ -104,18 +103,7 @@ login_info.close()
 # Define client events
 @client.event
 async def on_ready():
-    print('-Logged in---------------')
-    print('User name: {0}'.format(client.user.name))
-    print('User id  : {0}'.format(client.user.id))
-    print('-------------------------')
-    print(' ')
     await necrobot.post_login_init(login_data.server_id, login_data.admin_id)
-
-    necrobot.load_module(CondorModule(necrobot))
-
-    await necrobot.init_modules()
-
-    print('...done.')
 
 
 @client.event

@@ -4,6 +4,7 @@ import textwrap
 import config
 
 from adminmodule import AdminModule
+from condormodule import CondorModule
 from vodrecord import VodRecorder
 
 
@@ -19,53 +20,54 @@ class Necrobot(object):
         self._main_channel = None
         self._notifications_channel = None
         self._schedule_channel = None
+        self._admin_channel = None
         self._wants_to_quit = False
+        self._initted = False
 
     # Initializes object; call after client has been logged in to discord
     async def post_login_init(self, server_id, admin_id=0):
-        # Cleanup old data
-        for module in self.modules:
-            await module.close()
+        if not self._initted:
+            print('-Logging in--------------')
+            print('User name: {0}'.format(self.client.user.name))
+            print('User id  : {0}'.format(self.client.user.id))
 
-        VodRecorder().end_all()
+            self.admin_id = admin_id if admin_id else None
 
-        # Reset data members (to None)
-        self.server = None
-        self.prefs = None
-        self.modules.clear()
-        self._main_channel = None
-        self._notifications_channel = None
-        self._schedule_channel = None
-        self._wants_to_quit = False
+            # Set up server
+            try:
+                int(server_id)
+                id_is_int = True
+            except ValueError:
+                id_is_int = False
 
-        self.admin_id = admin_id if admin_id else None
-       
-        # Set up server
-        try:
-            int(server_id)
-            id_is_int = True
-        except ValueError:
-            id_is_int = False
-            
-        if self.client.servers:
-            for s in self.client.servers:
-                if id_is_int and s.id == server_id:
-                    print("Server id: {}".format(s.id))
-                    self.server = s
-                elif s.name == server_id:
-                    print("Server id: {}".format(s.id))
-                    self.server = s
+            if self.client.servers:
+                for s in self.client.servers:
+                    if id_is_int and s.id == server_id:
+                        print("Server id: {}".format(s.id))
+                        self.server = s
+                    elif s.name == server_id:
+                        print("Server id: {}".format(s.id))
+                        self.server = s
+            else:
+                print('Error: Could not find the server.')
+                exit(1)
+
+            # Init channels
+            self._main_channel = self.find_channel(config.MAIN_CHANNEL_NAME)
+            self._notifications_channel = self.find_channel(config.NOTIFICATIONS_CHANNEL_NAME)
+            self._schedule_channel = self.find_channel(config.SCHEDULE_CHANNEL_NAME)
+            self._admin_channel = self.find_channel(config.ADMIN_CHANNEL_NAME)
+            self.load_module(AdminModule(self))
+            self.load_module(CondorModule(self))
+
+            await self._init_modules()
+
+            self._initted = True
+            print('-------------------------')
         else:
-            print('Error: Could not find the server.')
-            exit(1)
+            print('Necrobot: post_login_init() called while initted.')
 
-        # Init channels
-        self._main_channel = self.find_channel(config.MAIN_CHANNEL_NAME)
-        self._notifications_channel = self.find_channel(config.NOTIFICATIONS_CHANNEL_NAME)
-        self._schedule_channel = self.find_channel(config.SCHEDULE_CHANNEL_NAME)
-        self.load_module(AdminModule(self))
-
-    async def init_modules(self):
+    async def _init_modules(self):
         for module in self.modules:
             await module.initialize()
 
@@ -93,6 +95,11 @@ class Necrobot(object):
     @property
     def schedule_channel(self):
         return self._schedule_channel
+
+    # Return the #adminchat channel
+    @property
+    def admin_channel(self):
+        return self._admin_channel
 
     # Return the condor staff role
     @property
@@ -157,6 +164,28 @@ class Necrobot(object):
     async def reboot(self):
         self._wants_to_quit = False
         await self.client.logout()
+
+    async def reboot_modules(self):
+        VodRecorder().end_all()
+        for module in self.modules:
+            await module.close()
+
+        server_id = self.server.id if self.server is not None else None
+        admin_id = self.admin_id
+
+        # Reset data members (to None)
+        self.server = None
+        self.prefs = None
+        self.modules.clear()
+        self._main_channel = None
+        self._notifications_channel = None
+        self._schedule_channel = None
+        self._admin_channel = None
+        self._wants_to_quit = False
+
+        self._initted = False
+
+        await self.post_login_init(server_id, admin_id)
 
     async def execute(self, cmd):
         # don't care about bad commands

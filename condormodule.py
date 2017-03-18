@@ -1562,7 +1562,7 @@ class CondorModule(command.Module):
 
     @property
     def admin_channel(self):
-        return self.necrobot.find_channel(config.ADMIN_CHANNEL_NAME)
+        return self.necrobot.admin_channel
 
     # Attempts to execute the given command (if a command of its type is in command_types)
     # Overrides
