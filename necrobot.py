@@ -206,15 +206,16 @@ class Necrobot(object):
 
     # Send a DM when someone joins
     async def on_member_join(self, member):
-        await self.client.send_message(member, textwrap.dedent("""
-            Welcome to the CoNDOR Season 5 server! Please register a stream and timezone with the bot. Example:
-            ```
-            .stream eladdifficult
-            .timezone America/Toronto
-            ```
-            See <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones> for a list of timezones.
-            (Please prefer to choose timezones like "America/Toronto" to timezones like "EDT"; the former should be
-             better at taking local daylight-savings rules into account.)"""))
+        if member.server == self.server:
+            await self.client.send_message(member, textwrap.dedent("""
+                Welcome to the CoNDOR Season 5 server! Please register a stream and timezone with the bot. Example:
+                ```
+                .stream eladdifficult
+                .timezone America/Toronto
+                ```
+                See <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones> for a list of timezones.
+                (Please prefer to choose timezones like "America/Toronto" to timezones like "EDT"; the former should be
+                 better at taking local daylight-savings rules into account.)"""))
 
     # Returns the given Discord User as a Member of the server
     def get_as_member(self, user):
