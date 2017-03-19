@@ -47,7 +47,7 @@ class CondorSheet(object):
         return self._gsheet.worksheet(worksheet_name)
     
     def _get_standings(self):
-        return self._gsheet.worksheet('Standings')
+        return self._gsheet.worksheet('Alphabetical')
 
     @staticmethod
     def _get_row(match, wks):
