@@ -261,7 +261,8 @@ class ForceChangeWinner(command.CommandType):
                 await self._room.write('I don\'t recognize the twitch name {}.'.format(winner_name))
                 return
 
-            self._room.condordb.change_winner(self._room.match, race_int, winner_int)
+            finished_number = self._room.condordb.finished_race_number(self._room.match, race_int)
+            self._room.condordb.change_winner(self._room.match, finished_number, winner_int)
             await self._room.write('Recorded {0} as the winner of race {1}.'.format(cmd.args[1], race_int))
             await self._room.update_leaderboard()
 
