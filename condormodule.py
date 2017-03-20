@@ -174,8 +174,15 @@ class Vod(command.CommandType):
             await self._cm.condorsheet.add_vod_link(match, url_link)
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
-                'Added a vod for the match {0}-{1}.'.format(
+                'Added a vod for **{0}** - **{1}**.'.format(
                     racer_1.escaped_unique_name, racer_2.escaped_unique_name))
+            await self._cm.necrobot.client.send_message(
+                self._cm.necrobot.main_channel,
+                '**{0}** added a vod for **{1}** - **{2}**: <{3}>'.format(
+                    cmd.author.display_name,
+                    racer_1.escaped_unique_name,
+                    racer_2.escaped_unique_name,
+                    url_link))
 
 
 class Cawmentate(command.CommandType):
