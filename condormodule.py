@@ -1892,7 +1892,7 @@ class CondorModule(command.Module):
             match.racer_2.escaped_unique_name)
         if match.league != CondorLeague.NONE:
             alert_text += '({0}) '.format(match.league)
-        alert_text += 'is scheduled to begin in {0} minutes.\n'.format(minutes_until_match)
+        alert_text += 'is scheduled to begin in {0} minutes. :timer: \n'.format(minutes_until_match)
         if cawmentator:
             alert_text += 'Cawmentary: <http://www.twitch.tv/{0}> \n'.format(cawmentator.twitch_name)
         alert_text += 'RTMP: <http://rtmp.condorleague.tv/#{0}/{1}> \n'.format(
