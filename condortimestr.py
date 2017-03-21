@@ -4,7 +4,7 @@ import datetime
 
 def timedelta_to_string(td, punctuate=False):
     if punctuate and td < datetime.timedelta(minutes=1):
-        return 'Right now!'
+        return 'Right now! :runner: :checkered_flag:'
 
     hrs = td.seconds // 3600
     mins = (td.seconds - hrs * 3600) // 60
