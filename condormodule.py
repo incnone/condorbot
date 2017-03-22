@@ -1325,7 +1325,7 @@ class ForceUpdate(command.CommandType):
             if match.played:
                 self._cm.condordb.record_match(match)
                 await self._cm.condorsheet.record_match(match)
-                await self._cm.post_match_result(match)
+                await self._cm.post_match_results(match)
                 
             await self._cm.update_match_channel(match)
             await self._cm.update_schedule_channel()
