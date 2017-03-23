@@ -248,11 +248,7 @@ class CondorSheet(object):
             try:
                 racer_1_cells = standings.findall(racer_1_regex)
                 racer_2_cells = standings.findall(racer_2_regex)
-                week_cells = standings.findall('Week {}'.format(match.week))
-                allowable_cols = []
-                for cell in week_cells:
-                    allowable_cols.append(cell.col)
-                    allowable_cols.append(cell.col + 1)
+                allowable_cols = [17 + 2*match.week, 18 + 2*match.week]
                 racer_1_cells = [cell for cell in racer_1_cells if cell.col in allowable_cols]
                 racer_2_cells = [cell for cell in racer_2_cells if cell.col in allowable_cols]
             except xml.etree.ElementTree.ParseError as e:
@@ -266,7 +262,7 @@ class CondorSheet(object):
             self._set_score(standings, racer_1_cells, racer_2_cells, match_results[0])
             self._set_score(standings, racer_2_cells, racer_1_cells, match_results[1])
         else:
-            self._log_warning('Couldn\'t find worksheet <Standings>.')
+            self._log_warning('Couldn\'t find worksheet <Alphabetical>.')
 
     @staticmethod
     def _set_score(standings, racer_1_cells, racer_2_cells, score):
