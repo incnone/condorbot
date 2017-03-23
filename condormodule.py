@@ -1906,7 +1906,7 @@ class CondorModule(command.Module):
         score = self.condordb.get_score(match)
         await self.necrobot.client.send_message(
             self.necrobot.main_channel,
-            'Match completed: **{0}** [{1} - {2}] **{3}**.'.format(
+            'Match completed: **{0}** [{1} - {2}] **{3}** :tada:'.format(
                 match.racer_1.escaped_unique_name,
                 score[0],
                 score[1],
