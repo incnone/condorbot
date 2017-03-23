@@ -248,6 +248,13 @@ class CondorSheet(object):
             try:
                 racer_1_cells = standings.findall(racer_1_regex)
                 racer_2_cells = standings.findall(racer_2_regex)
+                week_cells = standings.findall('Week {}'.format(match.week))
+                allowable_cols = []
+                for cell in week_cells:
+                    allowable_cols.append(cell.col)
+                    allowable_cols.append(cell.col + 1)
+                racer_1_cells = [cell for cell in racer_1_cells if cell.col in allowable_cols]
+                racer_2_cells = [cell for cell in racer_2_cells if cell.col in allowable_cols]
             except xml.etree.ElementTree.ParseError as e:
                 timestamp = datetime.datetime.utcnow()
                 self._log_warning('{0}: XML parse error when looking up racer names in the standings: '
@@ -268,7 +275,6 @@ class CondorSheet(object):
                 for cell_2 in racer_2_cells:
                     if cell_2.row == cell_1.row:
                         standings.update_cell(cell_1.row, cell_2.col - 15, score)
-                        return
 
     async def get_cawmentary(self, match):
         return await self._do_with_lock(self._get_cawmentary, match)
