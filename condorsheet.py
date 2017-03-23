@@ -248,7 +248,7 @@ class CondorSheet(object):
             try:
                 racer_1_cells = standings.findall(racer_1_regex)
                 racer_2_cells = standings.findall(racer_2_regex)
-                allowable_cols = [17 + 2*match.week, 18 + 2*match.week]
+                allowable_cols = [3, 18 + 2*match.week, 19 + 2*match.week]
                 racer_1_cells = [cell for cell in racer_1_cells if cell.col in allowable_cols]
                 racer_2_cells = [cell for cell in racer_2_cells if cell.col in allowable_cols]
             except xml.etree.ElementTree.ParseError as e:
