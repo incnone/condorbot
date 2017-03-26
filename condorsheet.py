@@ -248,7 +248,7 @@ class CondorSheet(object):
             try:
                 racer_1_cells = standings.findall(racer_1_regex)
                 racer_2_cells = standings.findall(racer_2_regex)
-                allowable_cols = [3, 18 + 2*match.week, 19 + 2*match.week]
+                allowable_cols = [3, 19 + 2*match.week, 20 + 2*match.week]
                 racer_1_cells = [cell for cell in racer_1_cells if cell.col in allowable_cols]
                 racer_2_cells = [cell for cell in racer_2_cells if cell.col in allowable_cols]
             except xml.etree.ElementTree.ParseError as e:
@@ -270,7 +270,7 @@ class CondorSheet(object):
             if cell_1.col == 3:
                 for cell_2 in racer_2_cells:
                     if cell_2.row == cell_1.row:
-                        standings.update_cell(cell_1.row, cell_2.col - 15, score)
+                        standings.update_cell(cell_1.row, cell_2.col - 16, score)
 
     async def get_cawmentary(self, match):
         return await self._do_with_lock(self._get_cawmentary, match)
