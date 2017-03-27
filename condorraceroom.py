@@ -478,6 +478,29 @@ class RaceRoom(command.Module):
     def condordb(self):
         return self._cm.condordb
 
+    # Returns true if all racers are ready
+    @property
+    def all_racers_ready(self):
+        return self.race and self.race.num_not_ready == 0
+
+    @property
+    def during_races(self):
+        return not self.before_races and not self.played_all_races
+
+    @property
+    def played_all_races(self):
+        if self.match.is_best_of:
+            return self._cm.condordb.number_of_wins_of_leader(self.match) >= (self.match.number_of_races//2 + 1)
+        else:
+            return self._cm.condordb.number_of_finished_races(self.match) >= self.match.number_of_races
+
+    @property
+    def race_to_contest(self):
+        if not self.race:
+            return 0
+
+        return int(self._cm.condordb.largest_recorded_race_number(self.match))
+
     # True if the user has admin permissions for this race
     def is_race_admin(self, member):
         admin_roles = self._cm.necrobot.admin_roles
@@ -678,25 +701,6 @@ class RaceRoom(command.Module):
             'Please input the seed ({1}) and type `.ready` when you are ready for the {0} race. '
             'When both racers `.ready`, the race will begin.'.format(race_str, self.race.race_info.seed))
 
-    # Returns true if all racers are ready
-    @property
-    def all_racers_ready(self):
-        return self.race and self.race.num_not_ready == 0
-
-    @property
-    def played_all_races(self):
-        if self.match.is_best_of:
-            return self._cm.condordb.number_of_wins_of_leader(self.match) >= (self.match.number_of_races//2 + 1)
-        else:
-            return self._cm.condordb.number_of_finished_races(self.match) >= self.match.number_of_races
-
-    @property
-    def race_to_contest(self):
-        if not self.race:
-            return 0
-
-        return int(self._cm.condordb.largest_recorded_race_number(self.match))
-
     # Begins the race if ready. (Writes a message if all racers are ready but an admin is not.)
     # Returns true on success
     async def begin_if_ready(self):
@@ -751,7 +755,8 @@ class RaceRoom(command.Module):
                 elif racer_2_time < racer_1_time:
                     winner = 2
 
-            if abs(racer_1_time - racer_2_time) <= (config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC*100):
+            if racer_1_time > 0 and racer_2_time > 0 \
+                    and abs(racer_1_time - racer_2_time) <= (config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC*100):
                 race_number = self._cm.condordb.number_of_finished_races(self.match) + 1
                 await self.client.send_message(
                     self.necrobot.notifications_channel,
@@ -779,9 +784,12 @@ class RaceRoom(command.Module):
                 'If you wish to contest the previous race\'s result, use the `.contest` command. This marks the '
                 'race as contested; CoNDOR Staff will be alerted, and will look into your race.')
 
+            self.race = None
+
             if self.played_all_races:
                 # Send match ending event if all races have been played
                 self.events.matchend(self.match.racer_1.rtmp_name, self.match.racer_2.rtmp_name)
+                asyncio.ensure_future(self._matchend_rtmp_streamcheck())
                 await self.record_match()
             else:
                 await self.begin_new_race()
@@ -805,3 +813,7 @@ class RaceRoom(command.Module):
 
     async def send_cawmentator_alert(self):
         await self._cm.send_cawmentator_alert(self.match)
+
+    async def _matchend_rtmp_streamcheck(self):
+        await asyncio.sleep(900)  # Sleep 15 minutes
+        await self._cm.alert_if_streaming_but_not_racing(self.match.racers)

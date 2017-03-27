@@ -12,6 +12,7 @@ import command
 import condortimestr
 import config
 import racetime
+import rtmpstreamcheck
 
 from condordb import CondorDB
 from condormatch import CondorRacer
@@ -1963,3 +1964,23 @@ class CondorModule(command.Module):
                 self._log_warning('Couldn\'t find channel with id <{0}>.'.format(channel_id))
 
         self.condordb.drop_racer_from_week(racer, week)
+
+    async def alert_if_streaming_but_not_racing(self, condor_racers):
+        rtmp_names = []
+        for racer in condor_racers:
+            rtmp_names.append(racer.rtmp_name)
+
+        still_streaming = rtmpstreamcheck.get_streamers(rtmp_names)
+        for racer in condor_racers:
+            if racer.rtmp_name in still_streaming:
+                # Don't alert this racer if they're currently in another match
+                for room in self._racerooms:
+                    if racer in room.match.racers and room.during_races:
+                        continue
+
+                racer_member = self.necrobot.find_member_with_id(racer.discord_id)
+                if racer_member is not None:
+                    await self.necrobot.client.send_message(
+                        racer_member,
+                        'Friendly reminder: Your match ended 15 minutes ago, but I\'ve detected that you are still '
+                        'streaming to the RTMP server. Please remember to turn off your stream.')
