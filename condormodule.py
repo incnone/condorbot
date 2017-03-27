@@ -717,7 +717,7 @@ class Suggest(command.CommandType):
                             await self._cm.necrobot.client.send_message(
                                 cmd.channel,
                                 '{0}: You\'ve suggested the match be scheduled for {1}. Waiting for the other '
-                                'racer to `confirm.`'.format(member.mention, condortimestr.get_time_str(r_dt)))
+                                'racer to `.confirm`.'.format(member.mention, condortimestr.get_time_str(r_dt)))
                         else:
                             await self._cm.necrobot.client.send_message(
                                 cmd.channel,
