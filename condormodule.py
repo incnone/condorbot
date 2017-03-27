@@ -971,7 +971,7 @@ class Stats(command.CommandType):
                         cmd.author.mention))
                 return
         elif len(cmd.args) == 1:
-            racer = self._cm.condordb.get_from_rtmp_name(cmd.args[0])
+            racer = self._cm.condordb.get_from_any_name(cmd.args[0])
             if racer is None:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
@@ -1049,7 +1049,7 @@ class UserInfo(command.CommandType):
                     '{0}: You haven\'t registered; use `.register` to register.'.format(
                         cmd.author.mention))
         elif len(cmd.args) == 1:
-            racer = self._cm.condordb.get_from_discord_name(cmd.args[0])
+            racer = self._cm.condordb.get_from_any_name(cmd.args[0])
             if not racer:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel, '{0}: Error: User {1} isn\'t registered.'.format(

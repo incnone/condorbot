@@ -138,6 +138,25 @@ class CondorDB(object):
         finally:
             self._close()
 
+    def get_from_any_name(self, any_name):
+        try:
+            self._connect()
+            cursor = self._db_conn.cursor()
+            params = (any_name.lower(), any_name.lower(), any_name.lower(),)
+            cursor.execute(
+                "SELECT discord_id,discord_name,twitch_name,timezone,rtmp_name,user_info "
+                "FROM user_data "
+                "WHERE LOWER(discord_name)=%s "
+                "OR LOWER(twitch_name)=%s "
+                "OR LOWER(rtmp_name)=%s",
+                params)
+            for row in cursor:
+                return CondorDB._get_racer_from_row(row)
+
+            self._log_warning('Couldn\'t find user name <{}>.'.format(any_name))
+        finally:
+            self._close()
+
     def get_from_discord_name(self, discord_name):
         try:
             self._connect()
