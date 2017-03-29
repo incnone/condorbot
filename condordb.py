@@ -134,7 +134,7 @@ class CondorDB(object):
             for row in cursor:
                 return CondorDB._get_racer_from_row(row)
 
-            self._log_warning('Couldn\'t find discord id <{}>.'.format(discord_id))
+            # self._log_warning('Couldn\'t find discord id <{}>.'.format(discord_id))
         finally:
             self._close()
 
@@ -153,7 +153,7 @@ class CondorDB(object):
             for row in cursor:
                 return CondorDB._get_racer_from_row(row)
 
-            self._log_warning('Couldn\'t find user name <{}>.'.format(any_name))
+            # self._log_warning('Couldn\'t find user name <{}>.'.format(any_name))
         finally:
             self._close()
 
@@ -170,7 +170,7 @@ class CondorDB(object):
             for row in cursor:
                 return CondorDB._get_racer_from_row(row)
 
-            self._log_warning('Couldn\'t find discord name <{}>.'.format(discord_name))
+            # self._log_warning('Couldn\'t find discord name <{}>.'.format(discord_name))
         finally:
             self._close()
 
@@ -187,7 +187,7 @@ class CondorDB(object):
             for row in cursor:
                 return CondorDB._get_racer_from_row(row)
 
-            self._log_warning('Couldn\'t find twitch name <{}>.'.format(twitch_name))
+            # self._log_warning('Couldn\'t find twitch name <{}>.'.format(twitch_name))
         finally:
             self._close()
 
@@ -212,8 +212,8 @@ class CondorDB(object):
                     params)
                 self._db_conn.commit()
                 return self.get_from_rtmp_name(rtmp_name, False)
-            else:
-                self._log_warning('Couldn\'t find RTMP name <{}>.'.format(rtmp_name))
+
+            # self._log_warning('Couldn\'t find RTMP name <{}>.'.format(rtmp_name))
 
         finally:
             self._close()
@@ -476,7 +476,7 @@ class CondorDB(object):
             for row in cursor:
                 return int(row[0])
 
-            self._log_warning('Couldn\'t find a match channel id.')
+            # self._log_warning('Couldn\'t find a match channel id.')
 
         finally:
             self._close()
