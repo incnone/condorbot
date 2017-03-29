@@ -197,20 +197,26 @@ class Race(object):
     
     # Begins the race. Called by the countdown.
     async def _begin_race(self):
-        racer_list = []
-        for r_id in self.racers:
-            racer = self.condordb.get_from_discord_id(r_id)
-            racer_list.append(racer.rtmp_name)
-            if not self.racers[r_id].begin_race():
+        for racer in self.racers.values():
+            if not racer.begin_race():
                 print("{} isn't ready while calling race.begin_race -- unexpected error.".format(racer.name))
 
         self._start_time = time.monotonic()
         self._start_datetime = datetime.datetime.utcnow()
         await self.room.write('GO!')
-        # Send race start event
-        self.events.racestart(racer_list[0], racer_list[1])
         self._status = RaceStatus['racing']
         asyncio.ensure_future(self.room.update_leaderboard())
+
+        # Send race start event
+        if config.EVENTS_ACTIVATED:
+            racer_list = []
+            for r_id in self.racers:
+                racer = self.condordb.get_from_discord_id(r_id)
+                if racer is not None:
+                    racer_list.append(racer.rtmp_name)
+                else:
+                    print("Could\'t find RTMP name in database for racer with ID {}-- unexpected error.".format(r_id))
+            self.events.racestart(racer_list[0], racer_list[1])
 
     # Checks to see if any racer has either finished or forfeited. If so, ends the race.
     # Return True if race was ended.
@@ -228,26 +234,30 @@ class Race(object):
         if self._status == RaceStatus['racing']:
             self._status = RaceStatus['completed']
             self._finalize_future = asyncio.ensure_future(self._finalization_countdown())
-            racer_list = []
-            winner_time = 0
-            winner = None
-            for r_id in self.racers:
-                racer = self.condordb.get_from_discord_id(r_id)
-                racer_list.append(racer.rtmp_name)
-                if self.racers[r_id].is_done_racing and (winner_time == 0 or self.racers[r_id].time < winner_time):
-                    winner = racer.rtmp_name
-                    winner_time = self.racers[r_id].time
+
             # Send race end event with the winner
-            self.events.raceend(racer_list[0], racer_list[1], winner)
+            if config.EVENTS_ACTIVATED:
+                racer_list = []
+                winner_time = 0
+                winner = None
+                for r_id in self.racers:
+                    racer = self.condordb.get_from_discord_id(r_id)
+                    racer_list.append(racer.rtmp_name)
+                    if self.racers[r_id].is_done_racing and (winner_time == 0 or self.racers[r_id].time < winner_time):
+                        winner = racer.rtmp_name
+                        winner_time = self.racers[r_id].time
+                self.events.raceend(racer_list[0], racer_list[1], winner)
 
     # Countdown coroutine to be wrapped in self._countdown_future.
     # Warning: Do not call this -- use begin_countdown instead.
     async def _race_countdown(self):
         countdown_timer = config.COUNTDOWN_LENGTH
+        await self.room.send_typing()
         self.room.begin_vod_recording()
         await asyncio.sleep(1)   # Pause before countdown
 
         await self.room.write('The race will begin in {0} seconds.'.format(countdown_timer))
+
         while countdown_timer > 0:
             if countdown_timer <= config.INCREMENTAL_COUNTDOWN_START:
                 await self.room.write('{}'.format(countdown_timer))
@@ -274,8 +284,8 @@ class Race(object):
     # Finalizes the race
     async def _finalize_race(self):
         self._status = RaceStatus['finalized'] if self.num_finished else RaceStatus['cancelled']
-        await self.room.record_race()
         self.room.end_vod_recording()
+        await self.room.record_race()
 
     # Attempt to cancel the race countdown -- transition race state from 'counting_down' to 'entry_open'
     # Returns False only if there IS a countdown, AND we failed to cancel it

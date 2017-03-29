@@ -125,5 +125,7 @@ except Exception as e:
     print('Exception: {}'.format(e))
     loop.run_until_complete(client.close())
 finally:
+    # for task in asyncio.Task.all_tasks(loop):
+    #     task.print_stack()
     loop.close()
     VodRecorder().end_all()

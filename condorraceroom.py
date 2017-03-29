@@ -520,6 +520,10 @@ class RaceRoom(command.Module):
         if self._race_countdown_future is not None:
             self._race_countdown_future.cancel()
 
+    # Send a "typing..." message to race room
+    async def send_typing(self):
+        await self.client.send_typing(self.channel)
+
     # Write text to the raceroom. Return a Message for the text written
     async def write(self, text):
         return await self.client.send_message(self.channel, text)
@@ -728,8 +732,7 @@ class RaceRoom(command.Module):
 
     async def record_race(self, cancelled=False):
         if self.race and self.race.start_time:
-
-            self.recorded_race = True
+            # Get data
             racer_1_time = -1
             racer_2_time = -1
             racer_1_finished = False
@@ -755,20 +758,13 @@ class RaceRoom(command.Module):
                 elif racer_2_time < racer_1_time:
                     winner = 2
 
-            if racer_1_time > 0 and racer_2_time > 0 \
-                    and abs(racer_1_time - racer_2_time) <= (config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC*100):
-                race_number = self._cm.condordb.number_of_finished_races(self.match) + 1
-                await self.client.send_message(
-                    self.necrobot.notifications_channel,
-                    'Race number {0} has finished within {1} seconds in channel {2}. ({3} -- {4}, {5} -- {6})'.format(
-                        race_number, config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC, self.channel.mention,
-                        self.match.racer_1.escaped_unique_name, racetime.to_str(racer_1_time),
-                        self.match.racer_2.escaped_unique_name, racetime.to_str(racer_2_time)))
-
+            # Record race in database
             self._cm.condordb.record_race(
                 self.match, racer_1_time, racer_2_time, winner,
                 self.race.race_info.seed, self.race.start_time.timestamp(), cancelled)
+            self.recorded_race = True
 
+            # Send confirmation text
             if not cancelled:
                 racer_1_member = self.necrobot.find_member_with_id(self.match.racer_1.discord_id)
                 racer_2_member = self.necrobot.find_member_with_id(self.match.racer_2.discord_id)
@@ -780,14 +776,36 @@ class RaceRoom(command.Module):
                 write_str = 'Race cancelled.'
 
             await self.write(write_str)
-            await self.write(
-                'If you wish to contest the previous race\'s result, use the `.contest` command. This marks the '
-                'race as contested; CoNDOR Staff will be alerted, and will look into your race.')
 
+            # Post bot notification if the race was close
+            if racer_1_time > 0 and racer_2_time > 0 \
+                    and abs(racer_1_time - racer_2_time) <= (config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC * 100):
+                race_number = self._cm.condordb.number_of_finished_races(self.match) + 1
+
+                vod_string = ''
+                racer_1_vodname = await VodRecorder().get_vodname(self.match.racer_1.rtmp_name)
+                racer_2_vodname = await VodRecorder().get_vodname(self.match.racer_2.rtmp_name)
+                if racer_1_vodname is not None:
+                    vod_string += '{0} vod: <{1}>\n'.format(self.match.racer_1.rtmp_name, racer_1_vodname)
+                if racer_2_vodname is not None:
+                    vod_string += '{0} vod: <{1}>\n'.format(self.match.racer_2.rtmp_name, racer_2_vodname)
+                if vod_string == '':
+                    vod_string = 'No vods available.'
+
+                await self.client.send_message(
+                    self.necrobot.notifications_channel,
+                    'Race number {0} has finished within {1} seconds in channel {2}. ({3} -- {4}, {5} -- {6}).\n '
+                    '{7}'.format(
+                        race_number, config.RACE_NOTIFY_IF_TIMES_WITHIN_SEC, self.channel.mention,
+                        self.match.racer_1.escaped_unique_name, racetime.to_str(racer_1_time),
+                        self.match.racer_2.escaped_unique_name, racetime.to_str(racer_2_time),
+                        vod_string))
+
+            # Remove the old race from this room
             self.race = None
 
+            # Check for match end
             if self.played_all_races:
-                # Send match ending event if all races have been played
                 self.events.matchend(self.match.racer_1.rtmp_name, self.match.racer_2.rtmp_name)
                 asyncio.ensure_future(self._matchend_rtmp_streamcheck())
                 await self.record_match()
