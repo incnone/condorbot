@@ -128,4 +128,4 @@ finally:
     # for task in asyncio.Task.all_tasks(loop):
     #     task.print_stack()
     loop.close()
-    VodRecorder().end_all()
+    VodRecorder().end_all_async_unsafe()

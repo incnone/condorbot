@@ -1,6 +1,5 @@
 # Represents a user-entered command
 
-import asyncio
 import config
 import logging
 import shlex

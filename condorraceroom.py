@@ -821,13 +821,13 @@ class RaceRoom(command.Module):
         await self.write('Match results recorded.')
         await self.update_leaderboard()
 
-    def begin_vod_recording(self):
+    async def begin_vod_recording(self):
         for racer in self.match.racers:
-            VodRecorder().start_record(racer.rtmp_name)
+            await VodRecorder().start_record(racer.rtmp_name)
 
-    def end_vod_recording(self):
+    async def end_vod_recording(self):
         for racer in self.match.racers:
-            VodRecorder().end_record(racer.rtmp_name)
+            await VodRecorder().end_record(racer.rtmp_name)
 
     async def send_cawmentator_alert(self):
         await self._cm.send_cawmentator_alert(self.match)

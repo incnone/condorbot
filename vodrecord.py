@@ -36,42 +36,48 @@ class VodRecorder(object):
                 else:
                     return None
 
-        def start_record(self, rtmp_name):
+        async def start_record(self, rtmp_name):
             if not config.RECORDING_ACTIVATED:
                 return
 
-            with (yield from self._lock):
+            async with self._lock:
                 self._start_record_nolock(rtmp_name)
 
-        def end_record(self, rtmp_name):
+        async def end_record(self, rtmp_name):
             if not config.RECORDING_ACTIVATED:
                 return
 
-            with (yield from self._lock):
+            async with self._lock:
                 self._end_record_nolock(rtmp_name)
 
-        def end_all(self):
+        async def end_all(self):
             if not config.RECORDING_ACTIVATED:
                 return
 
-            with (yield from self._lock):
-                for rtmp_name in self._recording_rtmps:
-                    curl = pycurl.Curl()
-                    try:
-                        curl.setopt(pycurl.CAINFO, certifi.where())
-                        curl.setopt(pycurl.URL, self._end_url(rtmp_name))
-                        curl.setopt(pycurl.WRITEDATA, self._end_buffer)
-                        curl.perform()
-                    except pycurl.error as e:
-                        self._log_warning(
-                            'Pycurl error in end_all() for racer <{0}>: Tried to curl <{1}>. Error {2}.'.format(
-                                rtmp_name,
-                                self._end_url(rtmp_name),
-                                e))
-                    finally:
-                        curl.close()
+            async with self._lock:
+                self.end_all_async_unsafe()
 
-                self._recording_rtmps.clear()
+        def end_all_async_unsafe(self):
+            if not config.RECORDING_ACTIVATED:
+                return
+
+            for rtmp_name in self._recording_rtmps:
+                curl = pycurl.Curl()
+                try:
+                    curl.setopt(pycurl.CAINFO, certifi.where())
+                    curl.setopt(pycurl.URL, self._end_url(rtmp_name))
+                    curl.setopt(pycurl.WRITEDATA, self._end_buffer)
+                    curl.perform()
+                except pycurl.error as e:
+                    self._log_warning(
+                        'Pycurl error in end_all() for racer <{0}>: Tried to curl <{1}>. Error {2}.'.format(
+                            rtmp_name,
+                            self._end_url(rtmp_name),
+                            e))
+                finally:
+                    curl.close()
+
+            self._recording_rtmps.clear()
 
         @staticmethod
         def _convert_to_vodlink(rtmp_name, vodname):

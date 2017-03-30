@@ -166,7 +166,7 @@ class Necrobot(object):
         await self.client.logout()
 
     async def reboot_modules(self):
-        VodRecorder().end_all()
+        await VodRecorder().end_all()
         for module in self.modules:
             await module.close()
 

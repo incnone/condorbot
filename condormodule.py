@@ -1675,7 +1675,7 @@ class CondorModule(command.Module):
                     await room.close()
 
             self._racerooms = [room for room in self._racerooms if int(room.channel.id) != int(channel.id)]
-            self.make_race_room(match)
+            await self.make_race_room(match)
 
     # TODO: the important thing here is to actually get rid of all the Tasks the RaceRoom has made,
     # which means doing this properly requires keeping track of and cleaning up RaceRooms properly
