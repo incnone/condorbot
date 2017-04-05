@@ -10,6 +10,7 @@ from enum import Enum
 
 
 class CondorLeague(Enum):
+    GRUDGE = -1
     NONE = 0
     BLOOD = 1
     TITANIUM = 2
@@ -37,6 +38,8 @@ class CondorLeague(Enum):
             return CondorLeague.PLAYIN
         elif lv == 7:
             return CondorLeague.PLAYOFF
+        elif lv == -1:
+            return CondorLeague.GRUDGE
         else:
             logging.getLogger('discord').warning(
                 'Tried to set a match\'s league from the value <>.'.format(lv))
@@ -59,6 +62,8 @@ class CondorLeague(Enum):
             return CondorLeague.PLAYIN
         elif s == 'playoffs':
             return CondorLeague.PLAYOFF
+        elif s == 'grudge':
+            return CondorLeague.GRUDGE
         else:
             logging.getLogger('discord').warning(
                 'Tried to set a match\'s league from the string <>.'.format(st))
@@ -88,6 +93,8 @@ class CondorLeague(Enum):
             return 'Play-In'
         elif self.value == 7:
             return 'Playoffs'
+        elif self.value == -1:
+            return 'GrudgeDOR'
 
 
 class CondorRacer(object):
