@@ -581,6 +581,8 @@ class Suggest(command.CommandType):
         return self._cm.condordb.is_registered_channel(channel.id)
 
     async def _do_execute(self, cmd):
+        REQUIRE_BEFORE_FRIDAY = False
+
         if len(cmd.args) != 3:
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
@@ -683,17 +685,18 @@ class Suggest(command.CommandType):
                 return                
 
             # Check if the scheduled time is before friday at noon
-            today_date = datetime.date.today()
-            friday_date = today_date + datetime.timedelta(days=((4-today_date.weekday()) % 7))
-            friday_midnight_eastern = pytz.timezone('US/Eastern').localize(
-                datetime.datetime.combine(friday_date, datetime.time(hour=0)))
-            time_until_friday = utc_dt - friday_midnight_eastern
-            if time_until_friday.total_seconds() > 0:
-                await self._cm.necrobot.client.send_message(
-                    cmd.channel,
-                    '{0}: Error: Matches must be scheduled before next Thursday at midnight US/Eastern.'.format(
-                        cmd.author.mention))
-                return
+            if REQUIRE_BEFORE_FRIDAY:
+                today_date = datetime.date.today()
+                friday_date = today_date + datetime.timedelta(days=((4-today_date.weekday()) % 7))
+                friday_midnight_eastern = pytz.timezone('US/Eastern').localize(
+                    datetime.datetime.combine(friday_date, datetime.time(hour=0)))
+                time_until_friday = utc_dt - friday_midnight_eastern
+                if time_until_friday.total_seconds() > 0:
+                    await self._cm.necrobot.client.send_message(
+                        cmd.channel,
+                        '{0}: Error: Matches must be scheduled before next Thursday at midnight US/Eastern.'.format(
+                            cmd.author.mention))
+                    return
 
             # Schedule the match
             match.schedule(utc_dt, racer)
