@@ -62,7 +62,7 @@ class CondorLeague(Enum):
             return CondorLeague.PLAYIN
         elif s == 'playoffs':
             return CondorLeague.PLAYOFF
-        elif s == 'grudge':
+        elif s == 'grudgedor':
             return CondorLeague.GRUDGE
         else:
             logging.getLogger('discord').warning(
