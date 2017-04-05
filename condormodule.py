@@ -414,12 +414,15 @@ class NextRace(command.CommandType):
                 'Didn\'t find any scheduled matches!')
             return
 
-        next_match = matches[0]
-        upcoming_matches = []
-        for match in matches:
-            if match.time - next_match.time < datetime.timedelta(hours=1, minutes=5) \
-                    or match.time - utcnow < datetime.timedelta(hours=1, minutes=5):
-                upcoming_matches.append(match)
+        if len(matches) >= 3:
+            latest_shown_match = matches[2]
+            upcoming_matches = []
+            for match in matches:
+                if match.time - latest_shown_match.time < datetime.timedelta(minutes=10) \
+                        or match.time - utcnow < datetime.timedelta(hours=1, minutes=5):
+                    upcoming_matches.append(match)
+        else:
+            upcoming_matches = matches
 
         infobox = await self._cm.get_nextrace_displaytext(upcoming_matches)
         await self._cm.necrobot.client.send_message(cmd.channel, infobox)
