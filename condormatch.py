@@ -16,6 +16,8 @@ class CondorLeague(Enum):
     OBSIDIAN = 3
     CRYSTAL = 4
     PLAYOFF = 5
+    PLAYIN_TOURNEY = 6
+    PLAYOFF_TOURNEY = 7
 
     @staticmethod
     def get_from_value(lv):
@@ -31,6 +33,10 @@ class CondorLeague(Enum):
             return CondorLeague.CRYSTAL
         elif lv == 5:
             return CondorLeague.PLAYOFF
+        elif lv == 6:
+            return CondorLeague.PLAYIN_TOURNEY
+        elif lv == 7:
+            return CondorLeague.PLAYOFF_TOURNEY
         else:
             logging.getLogger('discord').warning(
                 'Tried to set a match\'s league from the value <>.'.format(lv))
@@ -49,6 +55,10 @@ class CondorLeague(Enum):
             return CondorLeague.CRYSTAL
         elif s == 'playoffs':
             return CondorLeague.PLAYOFF
+        elif s.startswith('play-in'):
+            return CondorLeague.PLAYIN_TOURNEY
+        elif s == 'playoffs 4 real':
+            return CondorLeague.PLAYOFF_TOURNEY
         else:
             logging.getLogger('discord').warning(
                 'Tried to set a match\'s league from the string <>.'.format(st))
@@ -74,6 +84,10 @@ class CondorLeague(Enum):
             return 'Crystal'
         elif self.value == 5:
             return 'Playoffs'
+        elif self.value == 6:
+            return 'Play-In'
+        elif self.value == 5:
+            return 'Playoffs 4 Real'
 
 
 class CondorRacer(object):
