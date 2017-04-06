@@ -616,7 +616,7 @@ class Suggest(command.CommandType):
 
             if not match.racer_1 or not match.racer_2 \
                     or not match.racer_1.discord_id or not match.racer_2.discord_id:
-                await self._cm.necrobot.client.send_messate(
+                await self._cm.necrobot.client.send_message(
                     cmd.channel,
                     'Error: At least one of the racers in this match is not registered, and needs to call '
                     '`.register` in the main channel. (To check if you are registered, you can call `.userinfo '
