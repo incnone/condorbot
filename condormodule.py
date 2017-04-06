@@ -1339,6 +1339,61 @@ class ForceUpdate(command.CommandType):
             await self._cm.necrobot.client.send_message(cmd.channel, 'Updated.')
 
 
+class SetMatchType(command.CommandType):
+    def __init__(self, condor_module):
+        command.CommandType.__init__(self, 'setmatchtype')
+        self.help_text = '[Admin only]: Set the type of the match. Use `.setmatchtype repeat X` to make the match be ' \
+                         'racers play X races; use `.setmatchtype bestof Y` to make the match a best-of-Y.'
+        self._cm = condor_module
+
+    def recognized_channel(self, channel):
+        return self._cm.condordb.is_registered_channel(channel.id)
+
+    async def _do_execute(self, cmd):
+        if self._cm.necrobot.is_admin(cmd.author):
+            if len(cmd.args) != 2:
+                await self._cm.necrobot.client.send_message(
+                    cmd.channel,
+                    'Error: Wrong number of arguments for `.setmatchtype`.')
+
+            try:
+
+                num = int(cmd.args[1])
+                matchtype = cmd.args[0].rstrip('-')
+
+                match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
+                if not match:
+                    await self._cm.necrobot.client.send_message(
+                        cmd.channel,
+                        'Error: This match wasn\'t found in the database.')
+                    return
+
+                if matchtype.lower() == 'repeat':
+                    match.set_repeat(num)
+                    self._cm.condordb.update_match(match)
+                    await self._cm.necrobot.client.send_message(
+                        cmd.channel,
+                        'This match has been set to be a repeat-{0}.'.format(num))
+                    return
+                elif matchtype.lower() == 'bestof':
+                    match.set_best_of(num)
+                    self._cm.condordb.update_match(match)
+                    await self._cm.necrobot.client.send_message(
+                        cmd.channel,
+                        'This match has been set to be a best-of-{0}.'.format(num))
+                    return
+                else:
+                    await self._cm.necrobot.client.send_message(
+                        cmd.channel,
+                        'Error: I don\'t recognize the argument {0}.'.format(type))
+                    return
+
+            except ValueError:
+                await self._cm.necrobot.client.send_message(
+                    cmd.channel,
+                    'Error: Couldn\'t parse {0} as a number.'.format(cmd.args[1]))
+
+
 class ForceUnschedule(command.CommandType):
     def __init__(self, condor_module):
         command.CommandType.__init__(self, 'forceunschedule')
@@ -1549,6 +1604,7 @@ class CondorModule(command.Module):
                               ForceUnschedule(self),
                               ForceUpdate(self),
                               ForceTransferAccount(self),
+                              SetMatchType(self),
                               UpdateGSheetSchedule(self),
                               TimezoneAlert(self),
                               DropRacer(self),
