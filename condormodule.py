@@ -1359,7 +1359,7 @@ class SetMatchType(command.CommandType):
             try:
 
                 num = int(cmd.args[1])
-                matchtype = cmd.args[0].rstrip('-')
+                matchtype = cmd.args[0].lstrip('-')
 
                 match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
                 if not match:
