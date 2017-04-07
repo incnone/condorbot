@@ -798,13 +798,13 @@ class CondorDB(object):
                 cursor.execute(
                     "SELECT flags, winner, racer_1_time "
                     "FROM race_data "
-                    "WHERE racer_1_id=%s",
+                    "WHERE racer_1_id=%s AND league > 0",
                     params)
             else:
                 cursor.execute(
                     "SELECT flags, winner, racer_2_time "
                     "FROM race_data "
-                    "WHERE racer_2_id=%s",
+                    "WHERE racer_2_id=%s AND league > 0",
                     params)
             best_time = -1
             for row in cursor:
@@ -881,7 +881,7 @@ class CondorDB(object):
             cursor.execute(
                 "SELECT week_number, league "
                 "FROM match_data "
-                "WHERE racer_1_id=%s OR racer_2_id=%s "
+                "WHERE (racer_1_id=%s OR racer_2_id=%s) AND league > 0 "
                 "ORDER BY week_number ASC",
                 params)
 
