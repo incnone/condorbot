@@ -796,15 +796,25 @@ class CondorDB(object):
             number_of_timed_wins = 0
             if racer_number == 1:
                 cursor.execute(
-                    "SELECT flags, winner, racer_1_time "
+                    "SELECT race_data.flags, race_data.winner, race_data.racer_1_time "
                     "FROM race_data "
-                    "WHERE racer_1_id=%s AND league > 0",
+                    "INNER JOIN match_data ON "
+                    "    (race_data.racer_1_id = match_data.racer_1_id "
+                    "    AND race_data.racer_2_id = match_data.racer_2_id "
+                    "    AND race_data.week_number = match_data.week_number "
+                    "    AND race_data.is_showcase = match_data.is_showcase) "
+                    "WHERE race_data.racer_1_id = %s AND match_data.league > 0",
                     params)
             else:
                 cursor.execute(
-                    "SELECT flags, winner, racer_2_time "
+                    "SELECT race_data.flags, race_data.winner, race_data.racer_2_time "
                     "FROM race_data "
-                    "WHERE racer_2_id=%s AND league > 0",
+                    "INNER JOIN match_data ON "
+                    "    (race_data.racer_1_id = match_data.racer_1_id "
+                    "    AND race_data.racer_2_id = match_data.racer_2_id "
+                    "    AND race_data.week_number = match_data.week_number "
+                    "    AND race_data.is_showcase = match_data.is_showcase) "
+                    "WHERE race_data.racer_2_id = %s AND match_data.league > 0",
                     params)
             best_time = -1
             for row in cursor:
@@ -829,9 +839,14 @@ class CondorDB(object):
 
             fast_clears = []
             cursor.execute(
-                "SELECT racer_1_time, racer_1_id, racer_2_id, week_number "
+                "SELECT race_data.racer_1_time, race_data.racer_1_id, race_data.racer_2_id, race_data.week_number "
                 "FROM race_data "
-                "WHERE winner=1 AND racer_1_time != -1 ")
+                "INNER JOIN match_data ON "
+                "    (race_data.racer_1_id = match_data.racer_1_id "
+                "    AND race_data.racer_2_id = match_data.racer_2_id "
+                "    AND race_data.week_number = match_data.week_number "
+                "    AND race_data.is_showcase = match_data.is_showcase) "
+                "WHERE race_data.winner=1 AND race_data.racer_1_time != -1 AND match_data.league > 0")
             for row in cursor:
                 winner = self._get_racer_from_id(int(row[1]))
                 loser = self._get_racer_from_id(int(row[2]))
@@ -839,9 +854,14 @@ class CondorDB(object):
                     fast_clears.append([int(row[0]), winner.unique_name, loser.unique_name, int(row[3])])
 
             cursor.execute(
-                "SELECT racer_2_time, racer_2_id, racer_1_id, week_number "
+                "SELECT race_data.racer_2_time, race_data.racer_2_id, race_data.racer_1_id, race_data.week_number "
                 "FROM race_data "
-                "WHERE winner=2 AND racer_2_time != -1 ")
+                "INNER JOIN match_data ON "
+                "    (race_data.racer_1_id = match_data.racer_1_id "
+                "    AND race_data.racer_2_id = match_data.racer_2_id "
+                "    AND race_data.week_number = match_data.week_number "
+                "    AND race_data.is_showcase = match_data.is_showcase) "
+                "WHERE race_data.winner=2 AND race_data.racer_2_time != -1 AND match_data.league > 0")
             for row in cursor:
                 winner = self._get_racer_from_id(int(row[1]))
                 loser = self._get_racer_from_id(int(row[2]))
