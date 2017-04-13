@@ -707,11 +707,8 @@ class Suggest(command.CommandType):
             # Automatically confirm
             match.confirm(racer)
 
-            # update the db
-            self._cm.condordb.update_match(match)
-
             # output what we did
-            await self._cm.update_match_channel(match)
+            await self._cm.update_match(match)
             racers = [match.racer_1, match.racer_2]
             for match_racer in racers:
                 member = self._cm.necrobot.find_member_with_id(match_racer.discord_id)
@@ -860,16 +857,14 @@ class Postpone(command.CommandType):
                 return
 
             match.force_unconfirm()
-            self._cm.condordb.update_match(match)
 
             await self._cm.condorsheet.unschedule_match(match)
             await self._cm.delete_race_room(match)
+            await self._cm.update_match(match)
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
                 'The match has been postponed. An admin can resume with `.forcebeginmatch`, or the racers can '
                 '`.suggest` a new time as usual.')
-
-            await self._cm.update_match_channel(match)
 
 
 class Unconfirm(command.CommandType):
@@ -1132,10 +1127,9 @@ class ForceBeginMatch(command.CommandType):
                 match.schedule(datetime.datetime.utcnow(), None)
                 for racer in match.racers:
                     match.confirm(racer)                
-                self._cm.condordb.update_match(match)
 
                 await self._cm.make_race_room(match)
-                await self._cm.update_match_channel(match)
+                await self._cm.update_match(match)
                 await self._cm.update_schedule_channel()
 
 
@@ -1170,7 +1164,6 @@ class ForceConfirm(command.CommandType):
             for racer in match.racers:
                 match.confirm(racer)
 
-            self._cm.condordb.update_match(match)
             await self._cm.necrobot.client.send_message(
                 cmd.channel,
                 '{0} has forced confirmation of match time: {1}.'.format(
@@ -1179,7 +1172,7 @@ class ForceConfirm(command.CommandType):
             if match.confirmed:
                 await self._cm.condorsheet.schedule_match(match)
                 
-            await self._cm.update_match_channel(match)
+            await self._cm.update_match(match)
             await self._cm.update_schedule_channel()
 
 
@@ -1273,11 +1266,8 @@ class ForceRescheduleUTC(command.CommandType):
 
                 match.schedule(utc_dt, None)
 
-                # update the db
-                self._cm.condordb.update_match(match)
-
                 # output what we did
-                await self._cm.update_match_channel(match)
+                await self._cm.update_match(match)
                 racers = [match.racer_1, match.racer_2]
                 for racer in racers:
                     member = self._cm.necrobot.find_member_with_id(racer.discord_id)
@@ -1334,7 +1324,7 @@ class ForceUpdate(command.CommandType):
                 await self._cm.condorsheet.record_match(match)
                 await self._cm.post_match_results(match)
                 
-            await self._cm.update_match_channel(match)
+            await self._cm.update_match(match)
             await self._cm.update_schedule_channel()
             await self._cm.necrobot.client.send_message(cmd.channel, 'Updated.')
 
@@ -1357,7 +1347,6 @@ class SetMatchType(command.CommandType):
                     'Error: Wrong number of arguments for `.setmatchtype`.')
 
             try:
-
                 num = int(cmd.args[1])
                 matchtype = cmd.args[0].lstrip('-')
 
@@ -1370,14 +1359,14 @@ class SetMatchType(command.CommandType):
 
                 if matchtype.lower() == 'repeat':
                     match.set_repeat(num)
-                    self._cm.condordb.update_match(match)
+                    await self._cm.update_match(match)
                     await self._cm.necrobot.client.send_message(
                         cmd.channel,
                         'This match has been set to be a repeat-{0}.'.format(num))
                     return
                 elif matchtype.lower() == 'bestof':
                     match.set_best_of(num)
-                    self._cm.condordb.update_match(match)
+                    await self._cm.update_match(match)
                     await self._cm.necrobot.client.send_message(
                         cmd.channel,
                         'This match has been set to be a best-of-{0}.'.format(num))
@@ -1418,8 +1407,6 @@ class ForceUnschedule(command.CommandType):
             for racer in match.racers:
                 match.unconfirm(racer)
 
-            self._cm.condordb.update_match(match)
-
             if match.confirmed:
                 await self._cm.necrobot.client.send_message(
                     cmd.channel,
@@ -1430,7 +1417,7 @@ class ForceUnschedule(command.CommandType):
                     cmd.channel,
                     'The match has been unscheduled. Please `.suggest` a new time when one has been agreed upon.')
 
-            await self._cm.update_match_channel(match)    
+            await self._cm.update_match(match)
 
 
 class ForceTransferAccount(command.CommandType):
@@ -2046,3 +2033,12 @@ class CondorModule(command.Module):
                         racer_member,
                         'Friendly reminder: Your match ended 15 minutes ago, but I\'ve detected that you are still '
                         'streaming to the RTMP server. Please remember to turn off your stream.')
+
+    async def update_match(self, match):
+        self.condordb.update_match(match)
+        
+        for room in self._racerooms:
+            if room.match == match:  # NB: This only tests for same racers, same week
+                room.match = match
+
+        await self.update_match_channel(match)
