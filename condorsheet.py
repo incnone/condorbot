@@ -43,8 +43,10 @@ class CondorSheet(object):
         self._gsheet = gc.open(config.GSHEET_DOC_NAME)
 
     def _get_wks(self, week):
-        worksheet_name = "DiamonDOR Week(4/16-4/21)"  # Diamondor hotfix
-        # worksheet_name = "Week {}".format(week)
+        if config.GSHEET_WORKSHEET_NAME != '':
+            worksheet_name = config.GSHEET_WORKSHEET_NAME
+        else:
+            worksheet_name = "Week {}".format(week)
         return self._gsheet.worksheet(worksheet_name)
     
     def _get_standings(self):

@@ -33,6 +33,7 @@ def init(config_filename):
     global GSHEET_CREDENTIALS_FILENAME
     global GSHEET_DOC_NAME
     global GSHEET_TIMEZONE
+    global GSHEET_WORKSHEET_NAME
 
     # events
     global EVENTS_ACTIVATED
@@ -64,6 +65,7 @@ def init(config_filename):
         'gsheet_credentials_filename': 'data/gsheet_credentials.json',
         'gsheet_doc_name': 'CoNDOR Season 4',
         'gsheet_timezone': 'US/Eastern',
+        'gsheet_worksheet_name': '',
         'events_activated': 'true',
         'events_server': 'necrommunity.ovh',
         'events_port': '5000',
@@ -114,6 +116,7 @@ def init(config_filename):
     GSHEET_CREDENTIALS_FILENAME = defaults['gsheet_credentials_filename']
     GSHEET_DOC_NAME = defaults['gsheet_doc_name']
     GSHEET_TIMEZONE = defaults['gsheet_timezone']
+    GSHEET_WORKSHEET_NAME = defaults['gsheet_worksheet_name']
 
     EVENTS_ACTIVATED = bool(defaults['events_activated'] == 'true')
     EVENTS_SERVER = defaults['events_server']
