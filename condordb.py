@@ -846,7 +846,7 @@ class CondorDB(object):
                 "    AND race_data.racer_2_id = match_data.racer_2_id "
                 "    AND race_data.week_number = match_data.week_number "
                 "    AND race_data.is_showcase = match_data.is_showcase) "
-                "WHERE race_data.winner=1 AND race_data.racer_1_time != -1 AND match_data.league > 0")
+                "WHERE race_data.winner=1 AND race_data.racer_1_time != -1")
             for row in cursor:
                 winner = self._get_racer_from_id(int(row[1]))
                 loser = self._get_racer_from_id(int(row[2]))
@@ -861,7 +861,7 @@ class CondorDB(object):
                 "    AND race_data.racer_2_id = match_data.racer_2_id "
                 "    AND race_data.week_number = match_data.week_number "
                 "    AND race_data.is_showcase = match_data.is_showcase) "
-                "WHERE race_data.winner=2 AND race_data.racer_2_time != -1 AND match_data.league > 0")
+                "WHERE race_data.winner=2 AND race_data.racer_2_time != -1")
             for row in cursor:
                 winner = self._get_racer_from_id(int(row[1]))
                 loser = self._get_racer_from_id(int(row[2]))
