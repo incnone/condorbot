@@ -41,6 +41,6 @@ After you've completed the game (stepped on the final staircase), type `.done` o
 
 If you have typed `.done` in error, you should immediately type `.undone`. The race will then continue.
 
-If at any time something goes wrong and you and your opponent both wish to cancel the race, both of you should type `.cancel`. If both racers type `.cancel`, the race will be cancelled and a new race will begin.
+If at any time something goes wrong and you and your opponent both wish to cancel the race, both of you should type `.cancel`. If both racers type `.cancel`, the race will be canceled and a new race will begin.
 
 After the first race is over, the second race will begin; again both racers will have to type `.ready` for the second race to actually start the race. There will then be a third race (regardless of the outcome of the first two races). After three races have been completed, the match will be automatically recorded.

@@ -21,7 +21,7 @@ RaceStatus = {'uninitialized': 0,
               'paused': 4,
               'completed': 5,
               'finalized': 6,
-              'cancelled': 7}
+              'canceled': 7}
 StatusStrs = {'0': 'Not initialized.',
               '1': 'Waiting for racers to `.ready`.',
               '2': 'Starting!',
@@ -165,7 +165,7 @@ class Race(object):
     def is_paused(self):
         return self._status == RaceStatus['paused']
 
-    # True if the race is finalized or cancelled
+    # True if the race is finalized or canceled
     @property
     def complete(self):
         return self._status >= RaceStatus['completed']
@@ -283,7 +283,7 @@ class Race(object):
             
     # Finalizes the race
     async def _finalize_race(self):
-        self._status = RaceStatus['finalized'] if self.num_finished else RaceStatus['cancelled']
+        self._status = RaceStatus['finalized'] if self.num_finished else RaceStatus['canceled']
         await self.room.end_vod_recording()
         await self.room.record_race()
 
@@ -297,7 +297,7 @@ class Race(object):
                     self._status = RaceStatus['entry_open']
                     asyncio.ensure_future(self.room.update_leaderboard())
                     if display_msgs:
-                        await self.room.write('Countdown cancelled.')
+                        await self.room.write('Countdown canceled.')
                     return True
                 else:
                     return False
@@ -313,7 +313,7 @@ class Race(object):
                     self._status = RaceStatus['racing']
                     asyncio.ensure_future(self.room.update_leaderboard())
                     if display_msgs:
-                        await self.room.write('Race end cancelled -- unfinished racers may continue!')
+                        await self.room.write('Race end canceled -- unfinished racers may continue!')
                     return True
                 else:
                     return False
@@ -427,4 +427,4 @@ class Race(object):
     async def cancel(self):
         asyncio.ensure_future(self.cancel_countdown())
         await self.cancel_finalization()
-        self._status = RaceStatus['cancelled']
+        self._status = RaceStatus['canceled']

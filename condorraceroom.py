@@ -125,7 +125,7 @@ class Cancel(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'cancel')
         self.help_text = 'Indicates a desire to cancel the race. If both racers type `.cancel`, ' \
-                         'the race will be cancelled.'
+                         'the race will be canceled.'
         self._room = race_room
 
     async def _do_execute(self, cmd):
@@ -133,7 +133,7 @@ class Cancel(command.CommandType):
         if not success:
             await self._room.write(
                 '{0} wishes to cancel the race. Both racers must type `.cancel` for the race '
-                'to be cancelled.'.format(cmd.author.mention))
+                'to be canceled.'.format(cmd.author.mention))
 
 
 class Contest(command.CommandType):
@@ -335,13 +335,13 @@ class ForceNewRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcenewrace')
         self.help_text = 'Force the bot to make a new race. If there is a current race and it is not yet recorded, ' \
-                         'it will be recorded and cancelled.'
+                         'it will be recorded and canceled.'
         self._room = race_room
 
     async def _do_execute(self, cmd):
         if self._room.is_race_admin(cmd.author):
             if self._room.race and not self._room.recorded_race:
-                await self._room.record_race(cancelled=True)
+                await self._room.record_race(canceled=True)
             else:
                 await self._room.begin_new_race()
 
@@ -349,8 +349,8 @@ class ForceNewRace(command.CommandType):
 class ForceCancelRace(command.CommandType):
     def __init__(self, race_room):
         command.CommandType.__init__(self, 'forcecancelrace')
-        self.help_text = 'Mark a previously recorded race as cancelled. Usage is e.g., `.forcecancelrace 2`, ' \
-                         'to cancel the second uncancelled race of a match.'
+        self.help_text = 'Mark a previously recorded race as canceled. Usage is e.g., `.forcecancelrace 2`, ' \
+                         'to cancel the second uncanceled race of a match.'
         self._room = race_room
 
     async def _do_execute(self, cmd):
@@ -368,7 +368,7 @@ class ForceCancelRace(command.CommandType):
             finished_number = self._room.condordb.finished_race_number(self._room.match, race_number)
             if finished_number:
                 self._room.condordb.cancel_race(self._room.match, finished_number)
-                await self._room.write('Race number {0} was cancelled.'.format(race_number))
+                await self._room.write('Race number {0} was canceled.'.format(race_number))
                 await self._room.update_leaderboard()
             else:
                 self._room.write('I do not believe there have been {0} finished races.'.format(race_number))
@@ -440,7 +440,7 @@ class RaceRoom(command.Module):
 
         self.entered_racers = []                                    # Racers that have typed .here in this channel
         self.before_races = True
-        self.cancelling_racers = []                                 # Racers that have typed .cancel
+        self.canceling_racers = []                                 # Racers that have typed .cancel
 
         self._cm = condor_module
         self._race_countdown_future = None
@@ -535,10 +535,10 @@ class RaceRoom(command.Module):
     # Register a racer as wanting to cancel
     async def wants_to_cancel(self, member):
         for racer in self.match.racers:
-            if int(racer.discord_id) == int(member.id) and racer not in self.cancelling_racers:
-                self.cancelling_racers.append(racer)
+            if int(racer.discord_id) == int(member.id) and racer not in self.canceling_racers:
+                self.canceling_racers.append(racer)
 
-        if len(self.cancelling_racers) == 2:
+        if len(self.canceling_racers) == 2:
             await self.cancel_race()
             return True
         else:
@@ -547,16 +547,16 @@ class RaceRoom(command.Module):
     # Cancel the race
     async def cancel_race(self):
         if self.race and not self.race.is_before_race:
-            self.cancelling_racers = []
+            self.canceling_racers = []
             await self.race.cancel()
-            await self.record_race(cancelled=True)
-            await self.write('The current race was cancelled.')
+            await self.record_race(canceled=True)
+            await self.write('The current race was canceled.')
         else:
-            self.cancelling_racers = []
+            self.canceling_racers = []
             race_number = int(self._cm.condordb.largest_recorded_race_number(self.match))
             if race_number > 0:
                 self.condordb.cancel_race(self.match, race_number)
-                await self.write('The previous race was cancelled.'.format(race_number))
+                await self.write('The previous race was canceled.'.format(race_number))
                 await self.update_leaderboard()
 
     # Updates the leaderboard
@@ -675,7 +675,7 @@ class RaceRoom(command.Module):
             await asyncio.sleep(30)
 
     async def begin_new_race(self):
-        self.cancelling_racers = []
+        self.canceling_racers = []
         self.before_races = False
         self.race = Race(self, RaceRoom.get_new_raceinfo(), self._cm.condordb)
         await self.race.initialize()
@@ -730,7 +730,7 @@ class RaceRoom(command.Module):
             '{0}: I do not recognize you as one of the racers in this match. '
             'Contact CoNDOR Staff (`.staff`) if this is in error.'.format(member.mention))
 
-    async def record_race(self, cancelled=False):
+    async def record_race(self, canceled=False):
         if self.race and self.race.start_time:
             # Get data
             racer_1_time = -1
@@ -761,11 +761,11 @@ class RaceRoom(command.Module):
             # Record race in database
             self._cm.condordb.record_race(
                 self.match, racer_1_time, racer_2_time, winner,
-                self.race.race_info.seed, self.race.start_time.timestamp(), cancelled)
+                self.race.race_info.seed, self.race.start_time.timestamp(), canceled)
             self.recorded_race = True
 
             # Send confirmation text
-            if not cancelled:
+            if not canceled:
                 racer_1_member = self.necrobot.find_member_with_id(self.match.racer_1.discord_id)
                 racer_2_member = self.necrobot.find_member_with_id(self.match.racer_2.discord_id)
                 racer_1_mention = racer_1_member.mention if racer_1_member else ''
@@ -773,7 +773,7 @@ class RaceRoom(command.Module):
                 write_str = '{0}, {1}: The race is over, and has been recorded.'.format(
                     racer_1_mention, racer_2_mention)
             else:
-                write_str = 'Race cancelled.'
+                write_str = 'Race canceled.'
 
             await self.write(write_str)
 

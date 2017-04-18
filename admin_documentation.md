@@ -36,7 +36,7 @@ These commands should be entered in a race channel, during a match.
 
 - `.forcecancel` : Cancels the current race. You will probably need to call `.forcemakenew` after this command to start the next race.
 
-- `.forcecancelrace <race_number>` : Marks a previously recorded race as cancelled.
+- `.forcecancelrace <race_number>` : Marks a previously recorded race as canceled.
 
 - `.forcenewrace` : Force the bot to make a new race. This cancels any race in progress.
 

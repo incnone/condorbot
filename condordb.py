@@ -1109,7 +1109,7 @@ class CondorDB(object):
             self._connect()
             cursor = self._db_conn.cursor()
 
-            num_cancelled = 0
+            num_canceled = 0
             r1_wins = 0
             r2_wins = 0
             draws = 0
@@ -1127,7 +1127,7 @@ class CondorDB(object):
                 if int(row[1]):
                     flags = flags | CondorMatch.FLAG_CONTESTED
                 if row[2] & CondorDB.RACE_CANCELLED_FLAG:
-                    num_cancelled += 1
+                    num_canceled += 1
                 else:
                     noplays -= 1
                     if int(row[0]) == 1:
@@ -1137,7 +1137,7 @@ class CondorDB(object):
                     else:
                         draws += 1
 
-            params = (r1_wins, r2_wins, draws, noplays, num_cancelled, flags, number_of_races,
+            params = (r1_wins, r2_wins, draws, noplays, num_canceled, flags, number_of_races,
                       self._get_racer_id(match.racer_1), self._get_racer_id(match.racer_2), match.week,)
             cursor.execute(
                 "UPDATE match_data "
@@ -1176,13 +1176,13 @@ class CondorDB(object):
         finally:
             self._close()
                 
-    def record_race(self, match, racer_1_time, racer_2_time, winner, seed, timestamp, cancelled, force_recorded=False):
+    def record_race(self, match, racer_1_time, racer_2_time, winner, seed, timestamp, canceled, force_recorded=False):
         try:
             self._connect()
 
             race_number = self.largest_recorded_race_number(match) + 1
             flags = 0
-            if cancelled:
+            if canceled:
                 flags |= CondorDB.RACE_CANCELLED_FLAG
             if force_recorded:
                 flags |= CondorDB.RACE_FORCE_RECORDED_FLAG
