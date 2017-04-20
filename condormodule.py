@@ -1302,6 +1302,8 @@ class ForceUpdate(command.CommandType):
             # send typing prompt before accessing gsheet
             await self._cm.necrobot.client.send_typing(cmd.channel)
 
+            nopost = len(cmd.args) == 1 and cmd.args[0].lstrip('-') == 'nopost'
+
             match = self._cm.condordb.get_match_from_channel_id(cmd.channel.id)
             if not match:
                 await self._cm.necrobot.client.send_message(
@@ -1322,7 +1324,8 @@ class ForceUpdate(command.CommandType):
             if match.played:
                 self._cm.condordb.record_match(match)
                 await self._cm.condorsheet.record_match(match)
-                await self._cm.post_match_results(match)
+                if not nopost:
+                    await self._cm.post_match_results(match)
                 
             await self._cm.update_match(match)
             await self._cm.update_schedule_channel()
